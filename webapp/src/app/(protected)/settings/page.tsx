@@ -3,6 +3,7 @@
 import React from 'react';
 import { organizationsService } from '@/lib/supabase';
 import SettingsPanel from '@/components/settings/SettingsPanel';
+import ThemeSettings from '@/components/settings/ThemeSettings';
 import type {
   Organization,
   Administrator,
@@ -10,10 +11,11 @@ import type {
 
 } from '@/types/models';
 import { Card, CardContent } from '@/components/ui/card';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, Palette, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 /**
  * /settings
@@ -117,48 +119,112 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-        <div className="space-y-10 py-10">
+        <div className="space-y-8">
           <div className="space-y-4">
             <Skeleton className="h-8 w-64" />
             <Skeleton className="h-4 w-96" />
           </div>
-          <div className="grid gap-6 lg:grid-cols-2">
-            <Card>
-              <CardContent className="p-6 space-y-6">
-                <Skeleton className="h-5 w-56" />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-3">
-                    <Skeleton className="h-4 w-40" />
-                    <Skeleton className="h-10 w-full" />
-                    <Skeleton className="h-3 w-48" />
-                  </div>
-                  <div className="space-y-3">
-                    <Skeleton className="h-4 w-32" />
-                    <Skeleton className="h-20 w-full" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-6 space-y-5">
-                <Skeleton className="h-5 w-72" />
-                <div className="space-y-4">
-                  {Array.from({ length: 3 }).map((_, i) => (
-                    <div key={i} className="p-4 border rounded-lg space-y-3">
-                      <Skeleton className="h-4 w-32" />
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <Skeleton className="h-9 w-full" />
-                        <Skeleton className="h-9 w-full" />
-                        <Skeleton className="h-9 w-full" />
-                        <Skeleton className="h-9 w-full" />
-                      </div>
+
+          <Tabs defaultValue="appearance" className="space-y-6">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="appearance" className="flex items-center gap-2">
+                <Palette className="h-4 w-4" />
+                Apparence
+              </TabsTrigger>
+              <TabsTrigger value="organization" className="flex items-center gap-2">
+                <Building2 className="h-4 w-4" />
+                Organisation
+              </TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="appearance" className="space-y-6">
+              <div>
+                <Skeleton className="h-6 w-80 mb-2" />
+                <Skeleton className="h-4 w-96 mb-6" />
+                
+                <div className="space-y-6">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <Skeleton className="h-5 w-48 mb-2" />
+                      <Skeleton className="h-4 w-64" />
                     </div>
-                  ))}
+                    <Skeleton className="h-8 w-24" />
+                  </div>
+                  
+                  <Card>
+                    <CardContent className="space-y-6 pt-6">
+                      <div className="space-y-4">
+                        <Skeleton className="h-5 w-40" />
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          {Array.from({ length: 3 }).map((_, i) => (
+                            <div key={i} className="h-auto p-4 border rounded-lg flex flex-col items-center space-y-2">
+                              <Skeleton className="h-5 w-5" />
+                              <Skeleton className="h-4 w-16" />
+                              <Skeleton className="h-3 w-20" />
+                            </div>
+                          ))}
+                        </div>
+                        <div className="p-3 bg-muted/50 rounded-lg">
+                          <div className="flex items-center space-x-3">
+                            <Skeleton className="h-4 w-4" />
+                            <div>
+                              <Skeleton className="h-4 w-32 mb-1" />
+                              <Skeleton className="h-3 w-24" />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
-                <Skeleton className="h-9 w-48" />
-              </CardContent>
-            </Card>
-          </div>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="organization" className="space-y-6">
+              <div>
+                <Skeleton className="h-6 w-60 mb-2" />
+                <Skeleton className="h-4 w-80 mb-6" />
+                
+                <div className="space-y-6">
+                  <Card>
+                    <CardContent className="p-6 space-y-6">
+                      <Skeleton className="h-5 w-56" />
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-3">
+                          <Skeleton className="h-4 w-40" />
+                          <Skeleton className="h-10 w-full" />
+                          <Skeleton className="h-3 w-48" />
+                        </div>
+                        <div className="space-y-3">
+                          <Skeleton className="h-4 w-32" />
+                          <Skeleton className="h-20 w-full" />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-6 space-y-5">
+                      <Skeleton className="h-5 w-72" />
+                      <div className="space-y-4">
+                        {Array.from({ length: 2 }).map((_, i) => (
+                          <div key={i} className="p-4 border rounded-lg space-y-3">
+                            <Skeleton className="h-4 w-32" />
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              <Skeleton className="h-9 w-full" />
+                              <Skeleton className="h-9 w-full" />
+                              <Skeleton className="h-9 w-full" />
+                              <Skeleton className="h-9 w-full" />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <Skeleton className="h-9 w-48" />
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
         </div>
     );
   }
@@ -188,15 +254,46 @@ export default function SettingsPage() {
         <div>
           <h1 className="text-3xl font-bold text-foreground">Paramètres</h1>
           <p className="text-muted-foreground mt-2">
-            Gérez les informations de votre organisation et ses administrateurs.
+            Configurez votre organisation et personnalisez l'apparence de l'application.
           </p>
         </div>
 
-        <SettingsPanel
-          organization={organization}
-          onUpdateOrganization={handleUpdateOrganization}
-          loading={loading}
-        />
+        <Tabs defaultValue="organization" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="organization" className="flex items-center gap-2">
+              <Building2 className="h-4 w-4" />
+              Organisation
+            </TabsTrigger>
+            <TabsTrigger value="appearance" className="flex items-center gap-2">
+              <Palette className="h-4 w-4" />
+              Apparence
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="organization" className="space-y-6">
+            <div>
+              <h2 className="text-xl font-semibold mb-2">Personnalisation de l'interface</h2>
+              <p className="text-muted-foreground mb-6">
+                Configurez l'apparence et le comportement de l'interface selon vos préférences.
+              </p>
+              <ThemeSettings />
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="appearance" className="space-y-6">
+            <div>
+              <h2 className="text-xl font-semibold mb-2">Gestion de l'organisation</h2>
+              <p className="text-muted-foreground mb-6">
+                Gérez les informations de votre organisation et ses administrateurs.
+              </p>
+              <SettingsPanel
+                organization={organization}
+                onUpdateOrganization={handleUpdateOrganization}
+                loading={loading}
+              />
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
   );
 }

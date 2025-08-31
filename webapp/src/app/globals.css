@@ -3,6 +3,45 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Mode compact - réduit les espacements */
+.compact-mode {
+  --spacing-unit: 0.75;
+}
+
+.compact-mode .space-y-4 > * + * {
+  margin-top: calc(1rem * var(--spacing-unit));
+}
+
+.compact-mode .space-y-6 > * + * {
+  margin-top: calc(1.5rem * var(--spacing-unit));
+}
+
+.compact-mode .p-4 {
+  padding: calc(1rem * var(--spacing-unit));
+}
+
+.compact-mode .p-6 {
+  padding: calc(1.5rem * var(--spacing-unit));
+}
+
+/* Animations réduites - désactive ou réduit les animations */
+.reduce-animations *,
+.reduce-animations *::before,
+.reduce-animations *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+.reduce-animations .animate-pulse {
+  animation: none !important;
+}
+
+.reduce-animations .animate-spin {
+  animation: none !important;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
