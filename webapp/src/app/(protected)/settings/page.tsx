@@ -125,60 +125,17 @@ export default function SettingsPage() {
             <Skeleton className="h-4 w-96" />
           </div>
 
-          <Tabs defaultValue="appearance" className="space-y-6">
+          <Tabs defaultValue="organization" className="space-y-6">
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="appearance" className="flex items-center gap-2">
-                <Palette className="h-4 w-4" />
-                Apparence
-              </TabsTrigger>
               <TabsTrigger value="organization" className="flex items-center gap-2">
                 <Building2 className="h-4 w-4" />
                 Organisation
               </TabsTrigger>
+              <TabsTrigger value="appearance" className="flex items-center gap-2">
+                <Palette className="h-4 w-4" />
+                Apparence
+              </TabsTrigger>
             </TabsList>
-            
-            <TabsContent value="appearance" className="space-y-6">
-              <div>
-                <Skeleton className="h-6 w-80 mb-2" />
-                <Skeleton className="h-4 w-96 mb-6" />
-                
-                <div className="space-y-6">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <Skeleton className="h-5 w-48 mb-2" />
-                      <Skeleton className="h-4 w-64" />
-                    </div>
-                    <Skeleton className="h-8 w-24" />
-                  </div>
-                  
-                  <Card>
-                    <CardContent className="space-y-6 pt-6">
-                      <div className="space-y-4">
-                        <Skeleton className="h-5 w-40" />
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                          {Array.from({ length: 3 }).map((_, i) => (
-                            <div key={i} className="h-auto p-4 border rounded-lg flex flex-col items-center space-y-2">
-                              <Skeleton className="h-5 w-5" />
-                              <Skeleton className="h-4 w-16" />
-                              <Skeleton className="h-3 w-20" />
-                            </div>
-                          ))}
-                        </div>
-                        <div className="p-3 bg-muted/50 rounded-lg">
-                          <div className="flex items-center space-x-3">
-                            <Skeleton className="h-4 w-4" />
-                            <div>
-                              <Skeleton className="h-4 w-32 mb-1" />
-                              <Skeleton className="h-3 w-24" />
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              </div>
-            </TabsContent>
             
             <TabsContent value="organization" className="space-y-6">
               <div>
@@ -219,6 +176,49 @@ export default function SettingsPage() {
                         ))}
                       </div>
                       <Skeleton className="h-9 w-48" />
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="appearance" className="space-y-6">
+              <div>
+                <Skeleton className="h-6 w-80 mb-2" />
+                <Skeleton className="h-4 w-96 mb-6" />
+                
+                <div className="space-y-6">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <Skeleton className="h-5 w-48 mb-2" />
+                      <Skeleton className="h-4 w-64" />
+                    </div>
+                    <Skeleton className="h-8 w-24" />
+                  </div>
+                  
+                  <Card>
+                    <CardContent className="space-y-6 pt-6">
+                      <div className="space-y-4">
+                        <Skeleton className="h-5 w-40" />
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          {Array.from({ length: 3 }).map((_, i) => (
+                            <div key={i} className="h-auto p-4 border rounded-lg flex flex-col items-center space-y-2">
+                              <Skeleton className="h-5 w-5" />
+                              <Skeleton className="h-4 w-16" />
+                              <Skeleton className="h-3 w-20" />
+                            </div>
+                          ))}
+                        </div>
+                        <div className="p-3 bg-muted/50 rounded-lg">
+                          <div className="flex items-center space-x-3">
+                            <Skeleton className="h-4 w-4" />
+                            <div>
+                              <Skeleton className="h-4 w-32 mb-1" />
+                              <Skeleton className="h-3 w-24" />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </CardContent>
                   </Card>
                 </div>
@@ -272,16 +272,6 @@ export default function SettingsPage() {
           
           <TabsContent value="organization" className="space-y-6">
             <div>
-              <h2 className="text-xl font-semibold mb-2">Personnalisation de l'interface</h2>
-              <p className="text-muted-foreground mb-6">
-                Configurez l'apparence et le comportement de l'interface selon vos préférences.
-              </p>
-              <ThemeSettings />
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="appearance" className="space-y-6">
-            <div>
               <h2 className="text-xl font-semibold mb-2">Gestion de l'organisation</h2>
               <p className="text-muted-foreground mb-6">
                 Gérez les informations de votre organisation et ses administrateurs.
@@ -291,6 +281,16 @@ export default function SettingsPage() {
                 onUpdateOrganization={handleUpdateOrganization}
                 loading={loading}
               />
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="appearance" className="space-y-6">
+            <div>
+              <h2 className="text-xl font-semibold mb-2">Personnalisation de l'interface</h2>
+              <p className="text-muted-foreground mb-6">
+                Configurez l'apparence et le comportement de l'interface selon vos préférences.
+              </p>
+              <ThemeSettings />
             </div>
           </TabsContent>
         </Tabs>
