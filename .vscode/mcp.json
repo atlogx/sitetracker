@@ -1,0 +1,34 @@
+{
+  "inputs": [
+        {
+        "type": "promptString",
+        "id": "supabase-access-token",
+        "description": "Supabase personal access token",
+        "password": true
+        }
+    ],
+  "servers": {
+    "nuxt": {
+      "type": "http",
+      "url": "https://mcp.nuxt.com/sse"
+    },
+    "sequential-thinking": {
+      "command": "bunx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-sequential-thinking"
+      ]
+    },
+    "context7": {
+      "type": "http",
+      "url": "https://mcp.context7.com/mcp"
+    },
+    "supabase": {
+      "command": "npx",
+      "args": ["-y", "@supabase/mcp-server-supabase@latest", "--project-ref=ucxrlydvqmnyxyxajcfk"],
+      "env": {
+        "SUPABASE_ACCESS_TOKEN": "${input:supabase-access-token}"
+      }
+    }
+  }
+}
