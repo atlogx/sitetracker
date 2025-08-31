@@ -4,6 +4,7 @@ import * as React from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import {
+  AlertTriangle,
   Building2,
   ChevronRight,
   FolderOpen,
@@ -51,6 +52,11 @@ const navItems = [
     title: "Projets",
     url: "/site-tracker/projects",
     icon: FolderOpen,
+  },
+  {
+    title: "Alertes",
+    url: "/site-tracker/alertes",
+    icon: AlertTriangle,
   },
 ]
 

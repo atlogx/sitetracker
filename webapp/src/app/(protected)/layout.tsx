@@ -60,6 +60,15 @@ function getBreadcrumbFromPath(pathname: string): { items: BreadcrumbItem[] } {
     return { items };
   }
   
+  if (pathname.startsWith('/site-tracker/alertes')) {
+    return {
+      items: [
+        { label: 'Suivi de chantier', href: '/site-tracker' },
+        { label: 'Alertes', current: true }
+      ]
+    };
+  }
+  
   if (pathname === '/settings') {
     return {
       items: [
