@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from 'react';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   AlertTriangle, 
@@ -19,7 +19,7 @@ import {
   MailX,
   Loader2,
   ExternalLink,
-  Filter,
+
   Search
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -211,7 +211,7 @@ export default function AlertesPage() {
         const error = await response.json();
         toast.error(error.error || 'Erreur lors de la création');
       }
-    } catch (error) {
+    } catch {
       toast.error('Erreur lors de la création de l\'alerte');
     } finally {
       setCreating(false);
@@ -291,26 +291,26 @@ export default function AlertesPage() {
       const { error } = await supabase
         .from('alerts')
         .update({ 
-          resolved: true, 
-          resolved_at: new Date().toISOString() 
+          status: 'sent',
+          sent_date: new Date().toISOString() 
         })
         .eq('id', alertId);
 
       if (error) throw error;
 
-      toast.success('Alerte marquée comme résolue');
+      toast.success('Alerte marquée comme traitée');
       await fetchAlerts();
       
     } catch (error) {
       console.error('Error resolving alert:', error);
-      toast.error('Erreur lors de la résolution de l\'alerte');
+      toast.error('Erreur lors du traitement de l\'alerte');
     }
   };
 
   const filteredAlerts = alerts.filter(alert => {
     // Filter by tab
-    if (activeTab === 'active' && alert.resolved) return false;
-    if (activeTab === 'resolved' && !alert.resolved) return false;
+    if (activeTab === 'active' && alert.status === 'sent') return false;
+    if (activeTab === 'resolved' && alert.status !== 'sent') return false;
 
     // Filter by search term
     if (searchTerm) {
@@ -625,7 +625,7 @@ export default function AlertesPage() {
               Alertes actives ({alertCounts.active})
             </TabsTrigger>
             <TabsTrigger value="resolved">
-              Résolues ({alertCounts.resolved})
+              Traitées ({alertCounts.resolved})
             </TabsTrigger>
             <TabsTrigger value="all">Toutes</TabsTrigger>
           </TabsList>
@@ -677,10 +677,10 @@ export default function AlertesPage() {
                                 <StatusIcon className="h-3 w-3 mr-1" />
                                 {statusConf.label}
                               </Badge>
-                              {alert.resolved && (
+                              {alert.status === 'sent' && (
                                 <Badge className="bg-green-100 text-green-800">
                                   <CheckCircle className="h-3 w-3 mr-1" />
-                                  Résolue
+                                  Envoyée
                                 </Badge>
                               )}
                             </div>
@@ -713,18 +713,18 @@ export default function AlertesPage() {
                               <span>Destinataires: {alert.recipients.join(', ')}</span>
                             </div>
 
-                            {alert.sent_at && (
+                            {alert.sent_date && (
                               <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
                                 <MailCheck className="h-4 w-4" />
                                 <span>
-                                  Envoyé le {format(new Date(alert.sent_at), 'dd MMM yyyy à HH:mm', { locale: fr })}
+                                  Envoyé le {format(new Date(alert.sent_date), 'dd MMM yyyy à HH:mm', { locale: fr })}
                                 </span>
                               </div>
                             )}
                           </div>
 
                           <div className="flex flex-col gap-2 ml-4">
-                            {alert.status === 'pending' && !alert.resolved && (
+                            {alert.status === 'pending' && (
                               <Button
                                 size="sm"
                                 onClick={() => sendEmail(alert)}
@@ -739,14 +739,14 @@ export default function AlertesPage() {
                               </Button>
                             )}
 
-                            {!alert.resolved && (
+                            {alert.status !== 'sent' && (
                               <Button
                                 size="sm"
                                 variant="outline"
                                 onClick={() => resolveAlert(alert.id)}
                               >
                                 <CheckCircle className="h-4 w-4 mr-2" />
-                                Marquer résolue
+                                Marquer traitée
                               </Button>
                             )}
 

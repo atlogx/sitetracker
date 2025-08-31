@@ -1,15 +1,6 @@
 import { getServiceSupabase } from '@/lib/serverSupabase';
 
-interface AlertToCreate {
-  project_id: string;
-  site_id: string | null;
-  type: 'data_entry_delay' | 'problematic' | 'critical' | 'pre_demobilization' | 'demobilization';
-  title: string;
-  message: string;
-  recipients: string[];
-  concerned_month?: number;
-  concerned_year?: number;
-}
+
 
 export class AlertService {
   private supabase = getServiceSupabase();

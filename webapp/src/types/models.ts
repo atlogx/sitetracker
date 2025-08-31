@@ -84,13 +84,14 @@ export interface DatabaseAdministrator {
 export interface DatabaseAlert {
   id: string;
   project_id: string;
-  site_id?: string;
-  type: 'data_missing' | 'progress_alert' | 'pre_demobilization' | 'demobilization';
+  site_id: string | null;
+  type: 'data_entry_delay' | 'problematic' | 'critical' | 'pre_demobilization' | 'demobilization';
+  title: string;
   message: string;
   recipients: string[];
-  resolved: boolean;
+  status: 'pending' | 'sent' | 'failed';
   created_at: string;
-  resolved_at?: string;
+  sent_date: string | null;
 }
 
 export interface DatabaseSiteCompany {
@@ -242,6 +243,7 @@ export interface Alert {
   projectId: string;
   siteId?: string;
   type: AlertType;
+  title: string;
   message: string;
   recipients: string[];
   resolved: boolean;
@@ -415,9 +417,11 @@ export function convertProjectStatus(dbStatus: string): ProjectStatus {
 
 export function convertAlertType(dbType: string): AlertType {
   switch (dbType) {
-    case 'data_missing':
+    case 'data_entry_delay':
       return 'data_missing';
-    case 'progress_alert':
+    case 'problematic':
+      return 'progress_alert';
+    case 'critical':
       return 'progress_alert';
     case 'pre_demobilization':
       return 'pre_demobilization';
@@ -538,13 +542,14 @@ export function convertDatabaseToAlert(dbAlert: AlertWithRelations): Alert {
   return {
     id: dbAlert.id,
     projectId: dbAlert.project_id,
-    siteId: dbAlert.site_id,
+    siteId: dbAlert.site_id || undefined,
     type: convertAlertType(dbAlert.type),
+    title: dbAlert.title,
     message: dbAlert.message,
     recipients: dbAlert.recipients,
-    resolved: dbAlert.resolved,
+    resolved: dbAlert.status === 'sent',
     createdAt: dbAlert.created_at,
-    resolvedAt: dbAlert.resolved_at,
+    resolvedAt: dbAlert.sent_date || undefined,
     projectName: dbAlert.project?.name,
     siteName: dbAlert.site?.name
   };
