@@ -38,15 +38,13 @@ interface DatabaseAlert {
   id: string;
   project_id: string;
   site_id?: string;
-  type: 'data_missing' | 'progress_alert' | 'pre_demobilization' | 'demobilization';
+  type: 'data_entry_delay' | 'problematic' | 'critical' | 'pre_demobilization' | 'demobilization';
   title: string;
   message: string;
   recipients: string[];
-  resolved: boolean;
   status: 'pending' | 'sent' | 'failed';
   created_at: string;
-  resolved_at?: string;
-  sent_at?: string;
+  sent_date?: string;
   // Relations
   projects?: {
     name: string;
@@ -59,14 +57,19 @@ interface DatabaseAlert {
 }
 
 const alertTypeConfig = {
-  data_missing: {
-    label: 'Données manquantes',
-    color: 'bg-red-100 text-red-800 border-red-200',
+  data_entry_delay: {
+    label: 'Retard de saisie',
+    color: 'bg-orange-100 text-orange-800 border-orange-200',
+    icon: Clock
+  },
+  problematic: {
+    label: 'Statut problématique',
+    color: 'bg-yellow-100 text-yellow-800 border-yellow-200',
     icon: AlertTriangle
   },
-  progress_alert: {
-    label: 'Alerte progression',
-    color: 'bg-orange-100 text-orange-800 border-orange-200',
+  critical: {
+    label: 'Statut critique',
+    color: 'bg-red-100 text-red-800 border-red-200',
     icon: AlertTriangle
   },
   pre_demobilization: {
@@ -329,11 +332,11 @@ export default function AlertesPage() {
   });
 
   const alertCounts = {
-    active: alerts.filter(a => !a.resolved).length,
-    resolved: alerts.filter(a => a.resolved).length,
-    pending: alerts.filter(a => a.status === 'pending' && !a.resolved).length,
+    active: alerts.filter(a => a.status === 'pending').length,
+    resolved: alerts.filter(a => a.status === 'sent').length,
+    pending: alerts.filter(a => a.status === 'pending').length,
     critical: alerts.filter(a => 
-      (a.type === 'pre_demobilization' || a.type === 'demobilization') && !a.resolved
+      (a.type === 'critical' || a.type === 'pre_demobilization' || a.type === 'demobilization') && a.status === 'pending'
     ).length
   };
 
@@ -592,8 +595,9 @@ export default function AlertesPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tous les types</SelectItem>
-                  <SelectItem value="data_missing">Données manquantes</SelectItem>
-                  <SelectItem value="progress_alert">Alerte progression</SelectItem>
+                  <SelectItem value="data_entry_delay">Retard de saisie</SelectItem>
+                  <SelectItem value="problematic">Statut problématique</SelectItem>
+                  <SelectItem value="critical">Statut critique</SelectItem>
                   <SelectItem value="pre_demobilization">Pré-démobilisation</SelectItem>
                   <SelectItem value="demobilization">Démobilisation</SelectItem>
                 </SelectContent>
@@ -641,9 +645,21 @@ export default function AlertesPage() {
               </Card>
             ) : (
               <div className="space-y-4">
-                {filteredAlerts.map((alert) => {
-                  const typeConfig = alertTypeConfig[alert.type];
-                  const statusConf = statusConfig[alert.status];
+                {filteredAlerts.filter(alert => {
+                  if (activeTab === 'active') return alert.status === 'pending';
+                  if (activeTab === 'resolved') return alert.status === 'sent';
+                  return true; // 'all' tab shows everything
+                }).map((alert) => {
+                  const typeConfig = alertTypeConfig[alert.type] || {
+                    label: 'Type inconnu',
+                    color: 'bg-gray-100 text-gray-800 border-gray-200',
+                    icon: AlertTriangle
+                  };
+                  const statusConf = statusConfig[alert.status] || {
+                    label: 'Statut inconnu',
+                    color: 'bg-gray-100 text-gray-800',
+                    icon: Clock
+                  };
                   const IconComponent = typeConfig.icon;
                   const StatusIcon = statusConf.icon;
 
