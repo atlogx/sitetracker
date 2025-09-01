@@ -3,11 +3,7 @@
   "installCommand": "bun install",
   "framework": "nextjs",
   "regions": ["fra1"],
-  "functions": {
-    "src/app/api/**/*.ts": {
-      "runtime": "nodejs20.x"
-    }
-  },
+
   "headers": [
     {
       "source": "/(.*)",
