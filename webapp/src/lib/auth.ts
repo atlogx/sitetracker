@@ -17,6 +17,21 @@ const redirectBase =
 
 const resetRedirectTo = `${redirectBase}/auth/update-password`
 
+/**
+ * Construit une URL de redirection pour les emails de confirmation.
+ * Force le mode implicite (`flow_type=implicit`) afin d'éviter le flux PKCE
+ * qui génère un paramètre ?code=... sans access_token / refresh_token
+ * (cause des erreurs de type "both auth code and code verifier should be non-empty").
+ */
+function buildEmailRedirect(next?: string) {
+  const base = `${redirectBase}/auth/callback`
+  const params: string[] = ['flow_type=implicit']
+  if (next && next.startsWith('/')) {
+    params.push(`next=${encodeURIComponent(next)}`)
+  }
+  return `${base}?${params.join('&')}`
+}
+
 export async function signIn(email: string, password: string): Promise<AuthResult> {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password })
   if (error) {
@@ -30,17 +45,13 @@ export async function signIn(email: string, password: string): Promise<AuthResul
 }
 
 export async function signUp(email: string, password: string, next?: string): Promise<AuthResult> {
-  // Build a redirect URL that always uses the client-side origin (redirectBase)
-  // and optionally contains a `next` path to navigate after successful confirmation.
-  const redirectPath = '/auth/callback'
-  const redirectTo =
-    `${redirectBase}${redirectPath}${next && next.startsWith('/') ? `?next=${encodeURIComponent(next)}` : ''}`
-
+  const emailRedirectTo = buildEmailRedirect(next)
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
-      emailRedirectTo: redirectTo
+      // Forcer le flux implicite via paramètre dans l'URL de redirection
+      emailRedirectTo
     }
   })
   if (error) return { user: null, error: error.message }
@@ -108,15 +119,11 @@ export function getAccessTokenSync(): string | null {
 }
 
 export async function resendConfirmationEmail(email: string, next?: string): Promise<{ error: string | null }> {
-  // Use the same redirect construction as signUp so resend links point to the correct client callback
-  const redirectPath = '/auth/callback'
-  const redirectTo =
-    `${redirectBase}${redirectPath}${next && next.startsWith('/') ? `?next=${encodeURIComponent(next)}` : ''}`
-
+  const emailRedirectTo = buildEmailRedirect(next)
   const { error } = await supabase.auth.resend({
     type: 'signup',
-    email: email,
-    options: { emailRedirectTo: redirectTo }
+    email,
+    options: { emailRedirectTo }
   })
   return { error: error ? error.message : null }
 }
