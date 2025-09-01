@@ -426,24 +426,6 @@ export default function ProjectInteractiveClient(props: ProjectInteractiveClient
                   <span className="text-muted-foreground">Administrateurs:</span>
                   <div className="flex items-center gap-2">
                     <span className="font-medium">{(project.administrators || []).length}</span>
-                    {(project.administrators || []).length > 0 && (
-                      <div className="flex -space-x-1">
-                        {(project.administrators || []).slice(0, 3).map((admin) => (
-                          <div
-                            key={admin.id}
-                            className="w-6 h-6 bg-primary/10 border-2 border-background rounded-full flex items-center justify-center text-xs font-medium"
-                            title={`${admin.name} - ${admin.position || 'Administrateur'}`}
-                          >
-                            {admin.name.charAt(0).toUpperCase()}
-                          </div>
-                        ))}
-                        {(project.administrators || []).length > 3 && (
-                          <div className="w-6 h-6 bg-muted border-2 border-background rounded-full flex items-center justify-center text-xs font-medium text-muted-foreground">
-                            +{(project.administrators || []).length - 3}
-                          </div>
-                        )}
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>

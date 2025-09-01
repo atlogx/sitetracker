@@ -100,10 +100,9 @@ const ProjectAdministratorsManager: React.FC<ProjectAdministratorsManagerProps> 
     <div className="space-y-4">
       {!hideTitle && (
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Users className="h-5 w-5 text-muted-foreground" />
+          <div className="flex items-center gap-1">
             <h3 className="text-lg font-semibold">Administrateurs</h3>
-            <Badge variant="secondary" className="ml-2">
+            <Badge variant="secondary" className="ml-1">
               {administrators.length}
             </Badge>
           </div>
