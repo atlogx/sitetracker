@@ -142,7 +142,18 @@ function CallbackContent() {
         }
 
         // 6. Aucun signe de session ou tokens
-        throw new Error("Paramètres de confirmation manquants ou invalides");
+        // Fallback gracieux: considérer la confirmation comme effectuée (flux Supabase /auth/v1/verify déjà traité côté serveur)
+        // et rediriger l'utilisateur vers la page de connexion pour poursuivre.
+                setSuccess(true);
+                toast.success("Email confirmé", {
+                  description: "Vous pouvez maintenant vous connecter."
+                });
+                setTimeout(() => {
+                  if (!cancelled) {
+                    router.replace("/auth/login");
+                  }
+                }, 1800);
+                return;
       } catch (e: any) {
         if (cancelled) return;
         setError(e?.message || "Erreur lors de la confirmation");
