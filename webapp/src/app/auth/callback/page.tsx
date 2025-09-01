@@ -20,13 +20,14 @@ function CallbackContent() {
   useEffect(() => {
     const handleEmailConfirmation = async () => {
       try {
-        // Vérifier d'abord les paramètres dans le fragment (hash) - format moderne Supabase
-        let token_hash = null;
-        let type = null;
-        let access_token = null;
-        let refresh_token = null;
+        // Vérifier les paramètres depuis l'URL et le fragment
+        let token_hash = params.get("token_hash");
+        let type = params.get("type");
+        let access_token = params.get("access_token");
+        let refresh_token = params.get("refresh_token");
 
-        if (typeof window !== 'undefined' && window.location.hash) {
+        // Si pas de paramètres dans l'URL, vérifier le fragment (hash)
+        if (!token_hash && !access_token && typeof window !== 'undefined') {
           const hash = window.location.hash.substring(1);
           const hashParams = new URLSearchParams(hash);
           
@@ -36,24 +37,9 @@ function CallbackContent() {
           refresh_token = hashParams.get("refresh_token");
         }
 
-        // Si pas trouvé dans le hash, essayer les paramètres d'URL (format ancien)
-        if (!token_hash && !access_token) {
-          token_hash = params.get("token_hash");
-          type = params.get("type");
-          access_token = params.get("access_token");
-          refresh_token = params.get("refresh_token");
-        }
-
-        console.log("🔍 DEBUG - URL search params:", params.toString());
-        console.log("🔍 DEBUG - Window location:", window.location.href);
-        console.log("🔍 DEBUG - Window hash:", window.location.hash);
-        console.log("🔍 DEBUG - Extracted params:", { token_hash, type, access_token, refresh_token });
-
-        console.log("🔍 DEBUG - Checking access_token format...");
         // Si on a access_token et refresh_token (ancien format)
         if (access_token && refresh_token) {
-          console.log("✅ Found access_token and refresh_token");
-          const { data, error } = await supabase.auth.setSession({
+          const { error } = await supabase.auth.setSession({
             access_token,
             refresh_token,
           });
@@ -71,10 +57,8 @@ function CallbackContent() {
           return;
         }
 
-        console.log("🔍 DEBUG - Checking token_hash format...");
         // Si on a token_hash et type (nouveau format)
         if (token_hash && type) {
-          console.log("✅ Found token_hash and type");
           const { error: authError } = await supabase.auth.verifyOtp({
             token_hash,
             type: type as any
@@ -94,7 +78,6 @@ function CallbackContent() {
         }
 
         // Si aucun paramètre valide
-        console.log("❌ No valid parameters found!");
         throw new Error("Paramètres de confirmation manquants ou invalides");
         
       } catch (err: any) {
