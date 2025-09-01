@@ -64,7 +64,7 @@ export class AlertService {
       // Récupérer les informations du projet avec tous les emails
       const { data: project, error: projectError } = await this.supabase
         .from('projects')
-        .select('name, client_email, project_director_email, mission_manager_email')
+        .select('name, owner_email')
         .eq('id', params.projectId)
         .single();
 
@@ -94,9 +94,7 @@ export class AlertService {
 
       // Récupérer les destinataires
       const recipients = [
-        project.client_email,
-        project.project_director_email,
-        project.mission_manager_email
+        project.owner_email
       ].filter(email => email && email.trim().length > 0);
 
       if (recipients.length === 0) {

@@ -57,17 +57,15 @@ export interface Database {
           name: string
           code: string | null
           organization_id: string
-          client_name: string
-          client_email: string
-          client_phone: string
-          project_director_name: string
-          project_director_email: string
-          project_director_phone: string
-          mission_manager_name: string
-          mission_manager_email: string
-          mission_manager_phone: string
+          owner_name: string
+          owner_email: string
+          owner_phone: string
+          status: string
           is_active: boolean
-          global_status: 'active' | 'demobilized'
+          status_month: string | null
+          status_month_minus_1: string | null
+          status_month_minus_2: string | null
+          slug: string
           created_at: string
           updated_at: string
         }
@@ -76,17 +74,15 @@ export interface Database {
           name: string
           code?: string | null
           organization_id: string
-          client_name: string
-          client_email: string
-          client_phone: string
-          project_director_name: string
-          project_director_email: string
-          project_director_phone: string
-          mission_manager_name: string
-          mission_manager_email: string
-          mission_manager_phone: string
+          owner_name: string
+          owner_email: string
+          owner_phone?: string
+          status?: string
           is_active?: boolean
-          global_status?: 'active' | 'demobilized'
+          status_month?: string | null
+          status_month_minus_1?: string | null
+          status_month_minus_2?: string | null
+          slug?: string
           created_at?: string
           updated_at?: string
         }
@@ -95,17 +91,15 @@ export interface Database {
           name?: string
           code?: string | null
           organization_id?: string
-          client_name?: string
-          client_email?: string
-          client_phone?: string
-          project_director_name?: string
-          project_director_email?: string
-          project_director_phone?: string
-          mission_manager_name?: string
-          mission_manager_email?: string
-          mission_manager_phone?: string
+          owner_name?: string
+          owner_email?: string
+          owner_phone?: string
+          status?: string
           is_active?: boolean
-          global_status?: 'active' | 'demobilized'
+          status_month?: string | null
+          status_month_minus_1?: string | null
+          status_month_minus_2?: string | null
+          slug?: string
           created_at?: string
           updated_at?: string
         }

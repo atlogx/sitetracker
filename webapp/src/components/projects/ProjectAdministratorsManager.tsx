@@ -11,7 +11,6 @@ import { Badge } from '@/components/ui/badge';
 
 interface ProjectAdministratorsManagerProps {
   projectId: string;
-  projectName: string;
   administrators: Administrator[];
   onAddAdministrator?: (admin: UpsertAdministratorInput) => Promise<void> | void;
   onUpdateAdministrator?: (id: string, patch: Partial<UpsertAdministratorInput>) => Promise<void> | void;
@@ -29,7 +28,6 @@ interface AdministratorFormData {
 }
 
 const ProjectAdministratorsManager: React.FC<ProjectAdministratorsManagerProps> = ({
-  projectName,
   administrators,
   onAddAdministrator,
   onUpdateAdministrator,

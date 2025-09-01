@@ -722,7 +722,6 @@ export default function ProjectInteractiveClient(props: ProjectInteractiveClient
             <div className="space-y-6">
               <ProjectAdministratorsManager
                 projectId={project.id}
-                projectName={project.name}
                 administrators={project.administrators || []}
                 hideTitle={false}
                 hideEmptyState={false}

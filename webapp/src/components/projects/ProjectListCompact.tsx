@@ -73,6 +73,22 @@ interface ProjectListCompactProps {
 
 type TrendStatus = 'good' | 'problematic' | 'critical' | 'none';
 
+interface AdministratorFormData {
+  name: string;
+  email: string;
+  phone: string;
+  position: string;
+}
+
+interface NewProjectFormData {
+  name: string;
+  ownerName: string;
+  ownerEmail: string;
+  ownerPhone: string;
+  organizationId: string;
+  administrators: AdministratorFormData[];
+}
+
 // Système de couleurs cohérent avec le thème shadcn/ui
 const statusColors = {
   critical: {
@@ -122,18 +138,7 @@ function statusToLabel(status?: TrendStatus): string {
   }
 }
 
-function getStatusTextColor(status?: string): string {
-  switch (status) {
-    case 'good':
-      return statusColors.good.text;
-    case 'problematic':
-      return statusColors.problematic.text;
-    case 'critical':
-      return statusColors.critical.text;
-    default:
-      return 'text-muted-foreground';
-  }
-}
+
 
 function projectStatusBadgeVariant(projectStatus: Project['status']) {
   switch (projectStatus) {
@@ -412,7 +417,7 @@ export const ProjectListCompact: React.FC<ProjectListCompactProps> = ({
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
-  const [newProject, setNewProject] = useState({
+  const [newProject, setNewProject] = useState<NewProjectFormData>({
     name: '',
     ownerName: '',
     ownerEmail: '',
