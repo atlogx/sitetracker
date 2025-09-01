@@ -26,8 +26,6 @@ export default function ProjectClientWrapper({
 
   const handleDataChange = async (siteId: string, monthData: Partial<MonthlyProgress>) => {
     try {
-      console.log('Saving data for site:', siteId, monthData);
-      
       // Calculate status automatically based on monthly progress
       let calculatedStatus = monthData.status;
       if (monthData.monthlyProgress !== undefined) {
@@ -57,10 +55,7 @@ export default function ProjectClientWrapper({
 
       // Use upsert to create or update
       await monthlyProgressService.upsert(dbData);
-      
-      console.log('Data saved successfully');
     } catch (error) {
-      console.error('Error saving data:', error);
       throw error; // Re-throw so the component can handle it
     }
   };
