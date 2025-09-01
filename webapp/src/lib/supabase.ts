@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { createBrowserClient } from '@supabase/ssr';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -9,7 +10,21 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Utilisation côté client: createBrowserClient pour synchroniser les cookies (HTTPOnly) et supporter le refresh SSR.
+// Utilisation côté serveur (Edge / RSC): fallback sur createClient classique.
+let supabase =
+  typeof window === 'undefined'
+    ? createClient(supabaseUrl, supabaseAnonKey)
+    : createBrowserClient(supabaseUrl, supabaseAnonKey, {
+        cookieOptions: {
+          name: 'sb-auth',
+          lifetime: 60 * 60 * 24 * 7, // 7 jours
+          path: '/',
+          sameSite: 'lax'
+        }
+      });
+
+export { supabase };
 
 // Re-export types from models
 import type {
