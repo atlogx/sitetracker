@@ -41,24 +41,39 @@ export type {
 // Organizations service
 export const organizationsService = {
   async getAll() {
-    const { data, error } = await supabase
-      .from('organizations')
-      .select('*')
-      .order('created_at', { ascending: false });
-    
-    if (error) throw error;
-    return data;
+    const response = await fetch('/api/organization');
+    if (!response.ok) {
+      throw new Error('Failed to fetch organizations');
+    }
+    const result = await response.json();
+    return result.data;
   },
 
   async getById(id: string) {
-    const { data, error } = await supabase
-      .from('organizations')
-      .select('*')
-      .eq('id', id)
-      .single();
+    const response = await fetch(`/api/organization?id=${encodeURIComponent(id)}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch organization');
+    }
+    const result = await response.json();
+    return result.data;
+  },
+
+  async update(id: string, updates: Partial<Pick<DatabaseOrganization, 'name' | 'address'>>) {
+    const response = await fetch('/api/organization', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ id, ...updates }),
+    });
     
-    if (error) throw error;
-    return data;
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error?.message || 'Failed to update organization');
+    }
+    
+    const result = await response.json();
+    return result.data;
   }
 };
 
@@ -462,27 +477,30 @@ export const alertsService = {
 // Administrators service
 export const administratorsService = {
   async getAll() {
-    const { data, error } = await supabase
-      .from('administrators')
-      .select(`
-        *,
-        organization:organizations(*)
-      `)
-      .order('name', { ascending: true });
-    
-    if (error) throw error;
-    return data;
+    const response = await fetch('/api/administrators');
+    if (!response.ok) {
+      throw new Error('Failed to fetch administrators');
+    }
+    const result = await response.json();
+    return result.data;
+  },
+
+  async getById(id: string) {
+    const response = await fetch(`/api/administrators?id=${encodeURIComponent(id)}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch administrator');
+    }
+    const result = await response.json();
+    return result.data;
   },
 
   async getByOrganization(organizationId: string) {
-    const { data, error } = await supabase
-      .from('administrators')
-      .select('*')
-      .eq('organization_id', organizationId)
-      .order('name', { ascending: true });
-    
-    if (error) throw error;
-    return data;
+    const response = await fetch(`/api/administrators?organizationId=${encodeURIComponent(organizationId)}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch administrators by organization');
+    }
+    const result = await response.json();
+    return result.data;
   },
 
   async getByProject(projectId: string) {
@@ -495,6 +513,69 @@ export const administratorsService = {
     
     if (error) throw error;
     return data?.map(item => item.administrator) || [];
+  },
+
+  async create(adminData: {
+    name: string;
+    email: string;
+    phone?: string;
+    position?: string;
+    role: 'org-level' | 'project-level';
+    organization_id: string;
+  }) {
+    const response = await fetch('/api/administrators', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(adminData),
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error?.message || 'Failed to create administrator');
+    }
+    
+    const result = await response.json();
+    return result.data;
+  },
+
+  async update(id: string, updates: Partial<{
+    name: string;
+    email: string;
+    phone: string;
+    position: string;
+    role: 'org-level' | 'project-level';
+  }>) {
+    const response = await fetch('/api/administrators', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ id, ...updates }),
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error?.message || 'Failed to update administrator');
+    }
+    
+    const result = await response.json();
+    return result.data;
+  },
+
+  async delete(id: string) {
+    const response = await fetch(`/api/administrators?id=${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error?.message || 'Failed to delete administrator');
+    }
+    
+    const result = await response.json();
+    return result.data;
   }
 };
 

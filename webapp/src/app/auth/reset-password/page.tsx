@@ -73,7 +73,7 @@ function ResetPasswordContent() {
                     id="email"
                     type="email"
                     autoComplete="email"
-                    placeholder="email@exemple.com"
+                    placeholder="nom@example.com"
                     value={email}
                     disabled={submitting || !!successInfo}
                     onChange={(e) => setEmail(e.target.value)}

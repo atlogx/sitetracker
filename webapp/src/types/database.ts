@@ -348,6 +348,86 @@ export interface Database {
           }
         ]
       }
+      administrators: {
+        Row: {
+          id: string
+          organization_id: string
+          name: string
+          phone: string | null
+          email: string
+          role: 'org-level' | 'project-level'
+          position: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          name: string
+          phone?: string | null
+          email: string
+          role: 'org-level' | 'project-level'
+          position?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          name?: string
+          phone?: string | null
+          email?: string
+          role?: 'org-level' | 'project-level'
+          position?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "administrators_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      project_administrators: {
+        Row: {
+          id: string
+          project_id: string
+          administrator_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          project_id: string
+          administrator_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          project_id?: string
+          administrator_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_administrators_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_administrators_administrator_id_fkey"
+            columns: ["administrator_id"]
+            isOneToOne: false
+            referencedRelation: "administrators"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       status_history: {
         Row: {
           id: string

@@ -27,8 +27,7 @@ import {
  *   Returns updated row.
  *
  * NOTES:
- *  - The current DB schema (organizations) does NOT include an address column.
- *    If you later add 'address', extend the ALLOWED_UPDATE_FIELDS list accordingly.
+ *  - The current DB schema (organizations) includes an address column.
  *  - Uses service role key: ensure this route is protected (add auth / RLS where needed).
  */
 
@@ -95,7 +94,8 @@ export async function PUT(req: NextRequest) {
       'financial_service_name',
       'financial_service_email',
       'financial_service_phone',
-      'code'
+      'code',
+      'address'
     ])
 
     const updates: Record<string, unknown> = {}

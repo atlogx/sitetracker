@@ -240,7 +240,7 @@ export function SiteForm({
                 type="email"
                 value={data.company.email}
                 onChange={(e) => handleCompanyFieldChange('email', e.target.value)}
-                placeholder="contact@entreprise.fr"
+                placeholder="contact@example.com"
                 required
               />
             </div>
@@ -252,7 +252,7 @@ export function SiteForm({
                 type="tel"
                 value={data.company.phone}
                 onChange={(e) => handleCompanyFieldChange('phone', e.target.value)}
-                placeholder="01 23 45 67 89"
+                placeholder="+224 622 123 456"
                 required
               />
             </div>

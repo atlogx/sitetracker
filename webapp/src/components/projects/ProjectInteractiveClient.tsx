@@ -722,7 +722,7 @@ export default function ProjectInteractiveClient(props: ProjectInteractiveClient
                         type="email"
                         value={ownerForm.email}
                         onChange={(e) => setOwnerForm(prev => ({ ...prev, email: e.target.value }))}
-                        placeholder="email@exemple.fr"
+                        placeholder="nom@example.com"
                         required
                       />
                     </div>
@@ -733,7 +733,7 @@ export default function ProjectInteractiveClient(props: ProjectInteractiveClient
                         type="tel"
                         value={ownerForm.phone}
                         onChange={(e) => setOwnerForm(prev => ({ ...prev, phone: e.target.value }))}
-                        placeholder="+224 621 234 567"
+                        placeholder="+224 622 123 456"
                       />
                     </div>
                     <div className="flex gap-2">
@@ -863,7 +863,7 @@ export default function ProjectInteractiveClient(props: ProjectInteractiveClient
                               type="email"
                               value={form.email}
                               onChange={(e) => handleUpdateForm(form.id, 'email', e.target.value)}
-                              placeholder="email@exemple.fr"
+                              placeholder="nom@example.com"
                               required
                             />
                           </div>
@@ -873,7 +873,7 @@ export default function ProjectInteractiveClient(props: ProjectInteractiveClient
                               type="tel"
                               value={form.phone}
                               onChange={(e) => handleUpdateForm(form.id, 'phone', e.target.value)}
-                              placeholder="+224 621 234 567"
+                              placeholder="+224 622 123 456"
                             />
                           </div>
                         </div>
@@ -907,20 +907,85 @@ export default function ProjectInteractiveClient(props: ProjectInteractiveClient
                 administrators={project.administrators || []}
                 hideTitle={true}
                 hideEmptyState={isAddingAdmin}
+                onAddAdministrator={async (adminData) => {
+                  try {
+                    // Créer l'administrateur
+                    const adminResponse = await fetch('/api/administrators', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify({
+                        ...adminData,
+                        organization_id: project.organizationId || '',
+                      }),
+                    });
+
+                    if (!adminResponse.ok) {
+                      throw new Error('Erreur lors de la création de l\'administrateur');
+                    }
+
+                    const adminResult = await adminResponse.json();
+                    const newAdmin = adminResult.data;
+
+                    // Lier l'administrateur au projet
+                    const linkResponse = await fetch('/api/project-administrators', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify({
+                        project_id: project.id,
+                        administrator_id: newAdmin.id,
+                      }),
+                    });
+
+                    if (!linkResponse.ok) {
+                      throw new Error('Erreur lors de la liaison au projet');
+                    }
+
+                    toast.success("Administrateur ajouté avec succès");
+                    window.location.reload();
+                  } catch (error) {
+                    console.error('Erreur:', error);
+                    toast.error("Erreur lors de l'ajout de l'administrateur");
+                  }
+                }}
+                onUpdateAdministrator={async (adminId, updates) => {
+                  try {
+                    const response = await fetch('/api/administrators', {
+                      method: 'PUT',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify({ id: adminId, ...updates }),
+                    });
+
+                    if (response.ok) {
+                      toast.success("Administrateur modifié avec succès");
+                      window.location.reload();
+                    } else {
+                      throw new Error('Erreur lors de la modification');
+                    }
+                  } catch {
+                    toast.error("Erreur lors de la modification de l'administrateur");
+                  }
+                }}
                 onRemoveAdministrator={async (adminId) => {
                   try {
-                    const response = await fetch(`/api/administrators?id=${adminId}`, {
+                    // Supprimer la liaison avec le projet
+                    const response = await fetch(`/api/project-administrators?projectId=${project.id}&administratorId=${adminId}`, {
                       method: 'DELETE',
                     });
 
                     if (response.ok) {
-                      toast.success("Administrateur supprimé avec succès");
+                      toast.success("Administrateur retiré du projet avec succès");
                       window.location.reload();
                     } else {
-                      throw new Error('Erreur lors de la suppression');
+                      throw new Error('Erreur lors de la suppression de la liaison');
                     }
                   } catch {
-                    toast.error("Erreur lors de la suppression de l'administrateur");
+                    toast.error("Erreur lors de la suppression de l'administrateur du projet");
                   }
                 }}
               />

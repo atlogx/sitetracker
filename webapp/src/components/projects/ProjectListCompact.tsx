@@ -915,7 +915,7 @@ export const ProjectListCompact: React.FC<ProjectListCompactProps> = ({
                           prev ? { ...prev, ownerEmail: e.target.value } : prev
                         )
                       }
-                      placeholder="email@exemple.com"
+                      placeholder="nom@example.com"
                       required
                     />
                   </div>
@@ -929,7 +929,7 @@ export const ProjectListCompact: React.FC<ProjectListCompactProps> = ({
                           prev ? { ...prev, ownerPhone: e.target.value } : prev
                         )
                       }
-                      placeholder="+224 XXX XX XX XX"
+                      placeholder="+224 622 123 456"
                     />
                   </div>
                 </div>
@@ -1030,7 +1030,7 @@ export const ProjectListCompact: React.FC<ProjectListCompactProps> = ({
                                 )
                               } : prev);
                             }}
-                            placeholder="email@atlogx.fr"
+                            placeholder="nom@example.com"
                             required
                           />
                         </div>
@@ -1048,7 +1048,7 @@ export const ProjectListCompact: React.FC<ProjectListCompactProps> = ({
                                 )
                               } : prev);
                             }}
-                            placeholder="+224 XXX XX XX XX"
+                            placeholder="+224 622 123 456"
                           />
                         </div>
                       </div>
@@ -1197,7 +1197,7 @@ export const ProjectListCompact: React.FC<ProjectListCompactProps> = ({
                     onChange={(e) =>
                       setNewProject(prev => ({ ...prev, ownerEmail: e.target.value }))
                     }
-                    placeholder="email@exemple.com"
+                    placeholder="nom@example.com"
                     required
                   />
                 </div>
@@ -1209,7 +1209,7 @@ export const ProjectListCompact: React.FC<ProjectListCompactProps> = ({
                     onChange={(e) =>
                       setNewProject(prev => ({ ...prev, ownerPhone: e.target.value }))
                     }
-                    placeholder="+224 XXX XX XX XX"
+                    placeholder="+224 622 123 456"
                   />
                 </div>
               </div>
@@ -1310,7 +1310,7 @@ export const ProjectListCompact: React.FC<ProjectListCompactProps> = ({
                               )
                             }));
                           }}
-                          placeholder="email@atlogx.fr"
+                          placeholder="nom@example.com"
                           required
                         />
                       </div>
@@ -1328,7 +1328,7 @@ export const ProjectListCompact: React.FC<ProjectListCompactProps> = ({
                               )
                             }));
                           }}
-                          placeholder="+224 XXX XX XX XX"
+                          placeholder="+224 622 123 456"
                         />
                       </div>
                     </div>

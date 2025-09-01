@@ -168,7 +168,7 @@ const ProjectAdministratorsManager: React.FC<ProjectAdministratorsManagerProps> 
                     type="email"
                     value={newAdminForm.email}
                     onChange={(e) => setNewAdminForm(prev => ({ ...prev, email: e.target.value }))}
-                    placeholder="email@exemple.fr"
+                    placeholder="nom@example.com"
                     required
                   />
                 </div>
@@ -179,7 +179,7 @@ const ProjectAdministratorsManager: React.FC<ProjectAdministratorsManagerProps> 
                     type="tel"
                     value={newAdminForm.phone}
                     onChange={(e) => setNewAdminForm(prev => ({ ...prev, phone: e.target.value }))}
-                    placeholder="01 23 45 67 89"
+                    placeholder="+224 622 123 456"
                   />
                 </div>
               </div>

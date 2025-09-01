@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { organizationsService } from '@/lib/supabase';
+import { organizationsService, administratorsService } from '@/lib/supabase';
 import SettingsPanel from '@/components/settings/SettingsPanel';
 import ThemeSettings from '@/components/settings/ThemeSettings';
 import type {
@@ -68,10 +68,9 @@ export default function SettingsPage() {
         const orgRows = await organizationsService.getAll();
         
         if (orgRows && orgRows.length > 0) {
-          // TODO: Load administrators from database
-          // For now, we'll use empty array until administrators table is implemented
-          const administrators: Administrator[] = [];
-          const org = mapOrganizationRow(orgRows[0], administrators);
+          // Load administrators from database
+          const administrators = await administratorsService.getByOrganization(orgRows[0].id);
+          const org = mapOrganizationRow(orgRows[0], administrators || []);
           
           if (!cancelled) {
             setOrganization(org);
@@ -96,20 +95,24 @@ export default function SettingsPage() {
 
   /* ----------------------- Handlers pour l'organisation ----------------------- */
 
+  const handleRefreshData = () => {
+    setRefreshIndex(prev => prev + 1);
+  };
+
   async function handleUpdateOrganization(patch: Partial<UpsertOrganizationInput>) {
     if (!organization) return;
     
     try {
-      // TODO: Appeler organizationsService.update(organization.id, patch)
-      // Pour le moment, on met à jour localement
-      setOrganization(prev => prev ? { 
-        ...prev, 
-        address: patch.address ?? prev.address
-      } : prev);
+      // Appeler l'API pour mettre à jour l'organisation
+      const updatedOrg = await organizationsService.update(organization.id, patch);
       
-      console.log('Organisation mise à jour:', patch);
+      // Rafraîchir toutes les données pour avoir les administrateurs à jour
+      handleRefreshData();
+      
+      console.log('Organisation mise à jour:', updatedOrg);
     } catch (error) {
       console.error('Erreur lors de la mise à jour de l\'organisation:', error);
+      setError('Erreur lors de la mise à jour de l\'organisation');
     }
   }
 
@@ -279,6 +282,7 @@ export default function SettingsPage() {
               <SettingsPanel
                 organization={organization}
                 onUpdateOrganization={handleUpdateOrganization}
+                onRefresh={handleRefreshData}
                 loading={loading}
               />
             </div>

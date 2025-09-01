@@ -69,7 +69,7 @@ function LoginContent() {
                     id="email"
                     type="email"
                     autoComplete="email"
-                    placeholder="email@exemple.com"
+                    placeholder="nom@example.com"
                     value={email}
                     disabled={submitting}
                     onChange={(e) => setEmail(e.target.value)}

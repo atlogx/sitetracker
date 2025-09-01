@@ -2,17 +2,20 @@
 
 import React, { useState, useEffect } from 'react';
 import type { Organization, UpsertOrganizationInput } from '@/types/models';
+import { administratorsService } from '@/lib/supabase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Trash2, Plus, Save } from 'lucide-react';
 import { toast } from 'sonner';
 
 export interface SettingsPanelProps {
   organization: Organization | null;
   onUpdateOrganization?: (patch: Partial<UpsertOrganizationInput>) => Promise<void> | void;
+  onRefresh?: () => void;
   loading?: boolean;
 }
 
@@ -21,6 +24,7 @@ export interface SettingsPanelProps {
 const SettingsPanel: React.FC<SettingsPanelProps> = ({
   organization,
   onUpdateOrganization,
+  onRefresh,
   loading = false
 }) => {
   // États pour le formulaire organisation
@@ -31,6 +35,8 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
   // État pour les administrateurs (gestion directe comme dans les projets)
   const [editingOrgWithAdmins, setEditingOrgWithAdmins] = useState<typeof organization>(null);
   const [saving, setSaving] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [adminToDelete, setAdminToDelete] = useState<{index: number, admin: any} | null>(null);
 
   // Initialiser les formulaires quand l'organisation change
   useEffect(() => {
@@ -39,20 +45,49 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
         address: organization.address || ''
       });
       
-      // S'assurer qu'il y a au moins les 2 administrateurs par défaut
-      const defaultAdmins = organization.administrators && organization.administrators.length > 0 
-        ? organization.administrators 
-        : [
-            { id: '', name: '', email: '', phone: '', position: 'Directeur général', role: 'org-level' as const, organizationId: organization.id, createdAt: '', updatedAt: '' },
-            { id: '', name: '', email: '', phone: '', position: 'Service financier', role: 'org-level' as const, organizationId: organization.id, createdAt: '', updatedAt: '' }
-          ];
+      // Utiliser les administrateurs existants ou un tableau vide si aucun
+      const admins = organization.administrators || [];
       
       setEditingOrgWithAdmins({
         ...organization,
-        administrators: defaultAdmins
+        administrators: admins
       });
     }
   }, [organization]);
+
+  const handleDeleteAdmin = async () => {
+    if (!adminToDelete || !editingOrgWithAdmins) return;
+    
+    const { index, admin } = adminToDelete;
+    
+    // Si l'admin a un ID, le supprimer immédiatement de la BDD
+    if (admin.id) {
+      try {
+        await administratorsService.delete(admin.id);
+        toast.success('Administrateur supprimé avec succès');
+        
+        // Rafraîchir les données pour refléter la suppression
+        if (onRefresh) {
+          onRefresh();
+        }
+      } catch (error) {
+        console.error('Erreur lors de la suppression:', error);
+        toast.error('Erreur lors de la suppression de l\'administrateur');
+        return;
+      }
+    } else {
+      // Si pas d'ID, juste retirer de l'interface
+      setEditingOrgWithAdmins(prev => prev ? {
+        ...prev,
+        administrators: prev.administrators.filter((_, i) => i !== index)
+      } : prev);
+      toast.success('Administrateur retiré');
+    }
+    
+    // Fermer la dialog
+    setDeleteDialogOpen(false);
+    setAdminToDelete(null);
+  };
 
   const handleSaveOrganization = async () => {
     if (!onUpdateOrganization || !editingOrgWithAdmins) return;
@@ -91,16 +126,48 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
         address: orgForm.address
       });
       
-      // TODO: Ici il faudrait également sauvegarder les administrateurs valides
-      // Pour l'instant, on simule la sauvegarde
-      console.log('Organisation mise à jour avec adresse:', orgForm.address);
-      console.log('Administrateurs valides à sauvegarder:', validAdmins);
-      console.log(`${validAdmins.length} administrateur(s) sur ${editingOrgWithAdmins.administrators.length} seront sauvegardés`);
+      // Les suppressions sont maintenant gérées immédiatement, plus besoin de cette logique
+
+      // Sauvegarder les administrateurs valides
+      for (const admin of validAdmins) {
+        try {
+          if (admin.id) {
+            // Mettre à jour l'administrateur existant
+            await administratorsService.update(admin.id, {
+              name: admin.name,
+              email: admin.email,
+              phone: admin.phone || '',
+              position: admin.position || '',
+              role: admin.role
+            });
+          } else {
+            // Créer un nouvel administrateur
+            if (organization) {
+              await administratorsService.create({
+                name: admin.name,
+                email: admin.email,
+                phone: admin.phone || '',
+                position: admin.position || '',
+                role: admin.role,
+                organization_id: organization.id
+              });
+            }
+          }
+        } catch (error) {
+          console.error('Erreur lors de la sauvegarde de l\'administrateur:', admin.name, error);
+          throw error; // Re-throw pour arrêter le processus
+        }
+      }
       
+      // Plus besoin de gérer les suppressions différées
+      
+      console.log(`${validAdmins.length} administrateur(s) sauvegardé(s) avec succès`);
       toast.success('Modifications enregistrées avec succès');
       
-      // Simuler un délai pour la démo
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Rafraîchir les données pour récupérer les IDs des nouveaux administrateurs
+      if (onRefresh) {
+        onRefresh();
+      }
       
     } catch (error) {
       console.error('Erreur lors de la sauvegarde:', error);
@@ -157,7 +224,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                   id="org-address"
                   value={orgForm.address}
                   onChange={(e) => setOrgForm(prev => ({ ...prev, address: e.target.value }))}
-                  placeholder="Saisissez l&apos;adresse complète de l&apos;organisation..."
+                  placeholder="Ex: Quartier Almamya, Commune de Kaloum, Conakry, Guinée"
                   rows={3}
                   disabled={saving}
                 />
@@ -196,27 +263,47 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
           </Button>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-3">
-            {editingOrgWithAdmins.administrators.map((admin, index) => (
+          {editingOrgWithAdmins.administrators.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground mb-4">Aucun administrateur configuré</p>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setEditingOrgWithAdmins(prev => prev ? {
+                    ...prev,
+                    administrators: [{ 
+                      id: '', name: '', email: '', phone: '', position: '', 
+                      role: 'org-level' as const, organizationId: organization.id, 
+                      createdAt: '', updatedAt: '' 
+                    }]
+                  } : prev);
+                }}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Ajouter le premier administrateur
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {editingOrgWithAdmins.administrators.map((admin, index) => (
               <div key={admin.id || index} className="p-3 border rounded-lg bg-muted/20">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-medium">Administrateur {index + 1}</span>
-                  {editingOrgWithAdmins.administrators.length > 1 && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setEditingOrgWithAdmins(prev => prev ? {
-                          ...prev,
-                          administrators: prev.administrators.filter((_, i) => i !== index)
-                        } : prev);
-                      }}
-                      disabled={saving}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  )}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setAdminToDelete({
+                        index,
+                        admin: editingOrgWithAdmins.administrators[index]
+                      });
+                      setDeleteDialogOpen(true);
+                    }}
+                    disabled={saving}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -232,7 +319,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                           )
                         } : prev);
                       }}
-                      placeholder="ex: Directeur général"
+                      placeholder="Ex: Directeur général"
                       required
                       disabled={saving}
                     />
@@ -269,7 +356,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                           )
                         } : prev);
                       }}
-                      placeholder="email@atlogx.fr"
+                      placeholder="nom@example.com"
                       required
                       disabled={saving}
                     />
@@ -288,14 +375,15 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                           )
                         } : prev);
                       }}
-                      placeholder="01 23 45 67 89"
+                      placeholder="+224 622 123 456"
                       disabled={saving}
                     />
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -306,6 +394,78 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
           {saving ? 'Enregistrement...' : 'Enregistrer toutes les modifications'}
         </Button>
       </div>
+
+      {/* Dialog de confirmation de suppression */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Supprimer l'administrateur</DialogTitle>
+            <DialogDescription>
+              Cette action supprimera l'administrateur suivant de l'organisation. Veuillez confirmer votre choix.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <div className="rounded-lg border bg-muted/30 p-4">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium">Nom :</span>
+                  <span className="text-sm">{adminToDelete?.admin.name || 'Non renseigné'}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium">Poste :</span>
+                  <span className="text-sm">{adminToDelete?.admin.position || 'Non renseigné'}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium">Email :</span>
+                  <span className="text-sm">{adminToDelete?.admin.email || 'Non renseigné'}</span>
+                </div>
+              </div>
+            </div>
+            
+            {adminToDelete?.admin.id && (
+              <div className="mt-4">
+                <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0">
+                      <svg className="h-5 w-5 text-destructive" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="text-sm font-medium text-destructive">
+                        Action irréversible
+                      </h4>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Cette action supprimera définitivement l'administrateur de la base de données et ne peut pas être annulée.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDeleteDialogOpen(false);
+                setAdminToDelete(null);
+              }}
+            >
+              Annuler
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteAdmin}
+              disabled={saving}
+            >
+              {saving ? 'Suppression...' : 'Supprimer'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
