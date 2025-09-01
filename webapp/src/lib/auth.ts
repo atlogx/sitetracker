@@ -29,12 +29,18 @@ export async function signIn(email: string, password: string): Promise<AuthResul
   return { user: data.user, error: null }
 }
 
-export async function signUp(email: string, password: string): Promise<AuthResult> {
+export async function signUp(email: string, password: string, next?: string): Promise<AuthResult> {
+  // Build a redirect URL that always uses the client-side origin (redirectBase)
+  // and optionally contains a `next` path to navigate after successful confirmation.
+  const redirectPath = '/auth/callback'
+  const redirectTo =
+    `${redirectBase}${redirectPath}${next && next.startsWith('/') ? `?next=${encodeURIComponent(next)}` : ''}`
+
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: { 
-      emailRedirectTo: `${redirectBase}/auth/callback`
+    options: {
+      emailRedirectTo: redirectTo
     }
   })
   if (error) return { user: null, error: error.message }
@@ -101,11 +107,16 @@ export function getAccessTokenSync(): string | null {
   }
 }
 
-export async function resendConfirmationEmail(email: string): Promise<{ error: string | null }> {
+export async function resendConfirmationEmail(email: string, next?: string): Promise<{ error: string | null }> {
+  // Use the same redirect construction as signUp so resend links point to the correct client callback
+  const redirectPath = '/auth/callback'
+  const redirectTo =
+    `${redirectBase}${redirectPath}${next && next.startsWith('/') ? `?next=${encodeURIComponent(next)}` : ''}`
+
   const { error } = await supabase.auth.resend({
     type: 'signup',
     email: email,
-    options: { emailRedirectTo: `${redirectBase}/auth/callback` }
+    options: { emailRedirectTo: redirectTo }
   })
   return { error: error ? error.message : null }
 }
