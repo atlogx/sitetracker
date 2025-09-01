@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Tracker - Suivi de Chantiers",
+  title: "Jonii - Suivi de Chantiers",
   description: "Application de suivi et monitoring des projets de construction",
 };
 

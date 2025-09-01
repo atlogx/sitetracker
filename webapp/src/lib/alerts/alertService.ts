@@ -98,7 +98,7 @@ export class AlertService {
       ].filter(email => email && email.trim().length > 0);
 
       if (recipients.length === 0) {
-        recipients.push('admin@sitetracker.com');
+        recipients.push('admin@jonii.com');
       }
 
       // Créer l'alerte

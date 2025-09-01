@@ -144,7 +144,7 @@ function CallbackContent() {
                   </div>
                   <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
                     <p className="text-sm text-green-800 dark:text-green-200">
-                      Bienvenue sur Jonii Tracker ! Vous pouvez maintenant accéder à tous les outils de suivi de projets.
+                      Bienvenue sur Jonii ! Vous pouvez maintenant accéder à tous les outils de suivi de projets.
                     </p>
                   </div>
                 </>

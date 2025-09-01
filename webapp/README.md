@@ -1,4 +1,4 @@
-# SiteTracker - Suivi de Chantiers
+# Jonii - Suivi de Chantiers
 
 Application de suivi et monitoring des projets de construction avec gestion des alertes et démobilisations automatiques.
 

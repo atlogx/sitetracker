@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { Building2 } from 'lucide-react';
 
 export const metadata = {
-  title: 'Authentification | Tracker',
+  title: 'Authentification | Jonii',
   description: 'Connexion, inscription et réinitialisation du mot de passe'
 };
 
@@ -20,7 +20,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
               <Building2 className="h-4 w-4 text-primary-foreground" />
             </div>
             <span className="font-semibold text-sm tracking-tight">
-              Tracker
+              Jonii
             </span>
           </Link>
           <span className="text-[11px] text-muted-foreground uppercase tracking-wide">
