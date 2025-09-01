@@ -40,15 +40,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# Nuxt artifacts (phantom files - should not exist in Next.js project)
-.nuxt/
-plugins/
-composables/
-server/api/
-app/
-nuxt.config.*
-nitro.config.*
-
 # Cache and temporary files
 .cache/
 .turbo/
