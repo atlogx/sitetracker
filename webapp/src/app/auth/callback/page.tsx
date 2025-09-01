@@ -52,6 +52,32 @@ async function tryExchangeCode(code: string) {
     if (error) throw error;
     return true;
   }
+  // Fallback additionnel : certaines configurations retournent seulement un "code" PKCE
+  // et le client ne fournit pas les helpers d'échange. On tente alors verifyOtp en mode signup.
+  if (authAny?.verifyOtp) {
+    try {
+      const { error } = await authAny.verifyOtp({
+        token: code,
+        type: 'signup'
+      });
+      if (!error) {
+        return true;
+      }
+    } catch {
+      // Ignorer et passer à l'erreur finale
+    }
+  }
+  // Dernier recours : tenter signInWithOtp avec un code comme si c'était un lien magique
+  if (authAny?.signInWithOtp) {
+    try {
+      // Impossible d'inférer l'email ici; ce fallback ne fonctionnera que si le client
+      // supporte un mode interne de résolution du code (souvent non disponible).
+      // On l'encapsule dans un try silencieux.
+      await authAny.signInWithOtp({ email: '', options: { emailRedirectTo: undefined } });
+    } catch {
+      // Ignoré
+    }
+  }
   // Pas de méthode d'échange disponible
   throw new Error("Impossible d'échanger le code (méthode non disponible dans cette version du client).");
 }
