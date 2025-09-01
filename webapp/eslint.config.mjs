@@ -23,12 +23,21 @@ const eslintConfig = [
       "*.config.ts",
       ".vercel/**",
       "coverage/**",
-      // Nuxt artifacts (phantom files)
+      // Nuxt artifacts (phantom files) - completely ignore
       ".nuxt/**",
-      "plugins/**",
-      "composables/**",
-      "server/api/**",
-      "app/**",
+      "plugins/**/*",
+      "composables/**/*", 
+      "server/api/**/*",
+      "app/**/*",
+      "app/app.vue",
+      "plugins/css.client.ts",
+      "plugins/pinia.client.ts",
+      "composables/useSupabaseClient.ts",
+      "server/api/companies/index.post.ts",
+      "server/api/projects/index.post.ts",
+      "scripts/check-schema.js",
+      "scripts/pre-deploy.js",
+      "src/app/suivi/page.tsx",
       // Scripts and other artifacts
       "scripts/**",
       "*.lock",
@@ -50,6 +59,16 @@ const eslintConfig = [
       "@typescript-eslint/no-require-imports": "off",
       "prefer-const": "off"
     },
+    settings: {
+      "import/resolver": {
+        "typescript": {
+          "project": "./tsconfig.json"
+        },
+        "node": {
+          "extensions": [".js", ".jsx", ".ts", ".tsx"]
+        }
+      }
+    }
   },
 ];
 

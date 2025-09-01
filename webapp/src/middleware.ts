@@ -32,14 +32,8 @@ export async function middleware(req: NextRequest) {
 
   // Pages qui nécessitent une authentification
   const protectedPaths = [
-    '/dashboard',
-    '/projects',
-    '/sites',
-    '/companies',
-    '/administrators',
-    '/monthly-progress',
-    '/settings',
-    '/site-tracker'
+    '/site-tracker',
+    '/settings'
   ]
 
   // Pages d'authentification

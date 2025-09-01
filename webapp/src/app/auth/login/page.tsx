@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn, assertEmail } from "@/lib/auth";
+import { supabase } from "@/lib/supabase";
 import { AppLayout } from "@/components/AppLayout";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -63,6 +64,10 @@ function LoginContent() {
       });
       return;
     }
+    // Forcer la synchronisation des cookies pour le middleware
+    try {
+      await supabase.auth.getSession();
+    } catch {}
     router.replace(next && next.startsWith("/") ? next : "/");
   }
 

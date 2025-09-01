@@ -15,13 +15,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
 const supabase =
   typeof window === 'undefined'
     ? createClient(supabaseUrl, supabaseAnonKey)
-    : createBrowserClient(supabaseUrl, supabaseAnonKey, {
-        cookieOptions: {
-          name: 'sb-auth',
-          path: '/',
-          sameSite: 'lax'
-        }
-      });
+    : createBrowserClient(supabaseUrl, supabaseAnonKey);
 
 export { supabase };
 
