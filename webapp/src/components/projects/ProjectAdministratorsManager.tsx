@@ -2,23 +2,12 @@
 
 import React, { useState, useEffect } from 'react';
 import type { Administrator, UpsertAdministratorInput } from '@/types/models';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Trash2, Save, Users, Edit2, UserPlus, X } from 'lucide-react';
+import { Trash2, Save, Users, Edit2, UserPlus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
 
 interface ProjectAdministratorsManagerProps {
   projectId: string;
@@ -132,80 +121,70 @@ const ProjectAdministratorsManager: React.FC<ProjectAdministratorsManagerProps> 
 
       {isAddingAdmin && (
         <Card className="border-dashed border-2">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base">Nouvel administrateur</CardTitle>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setIsAddingAdmin(false);
-                  setNewAdminForm({ name: '', email: '', phone: '', position: '' });
-                }}
-                className="h-8 w-8 p-0"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent className="p-3">
-            <form onSubmit={handleAddAdministrator} className="space-y-3">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="new-position">Poste</Label>
+          <CardContent className="p-2">
+            <form onSubmit={handleAddAdministrator} className="space-y-2">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label htmlFor="new-position" className="text-xs">Poste *</Label>
                   <Input
                     id="new-position"
                     value={newAdminForm.position}
                     onChange={(e) => setNewAdminForm(prev => ({ ...prev, position: e.target.value }))}
-                    placeholder="Directeur de projet"
+                    placeholder="Directeur"
                     required
+                    className="h-8 text-xs"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="new-name">Nom</Label>
+                <div className="space-y-1">
+                  <Label htmlFor="new-name" className="text-xs">Nom *</Label>
                   <Input
                     id="new-name"
                     value={newAdminForm.name}
                     onChange={(e) => setNewAdminForm(prev => ({ ...prev, name: e.target.value }))}
-                    placeholder="Jean Dupont"
+                    placeholder="Nom complet"
                     required
+                    className="h-8 text-xs"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="new-email">Email</Label>
+                <div className="space-y-1">
+                  <Label htmlFor="new-email" className="text-xs">Email *</Label>
                   <Input
                     id="new-email"
                     type="email"
                     value={newAdminForm.email}
                     onChange={(e) => setNewAdminForm(prev => ({ ...prev, email: e.target.value }))}
-                    placeholder="jean@example.com"
+                    placeholder="nom@example.com"
                     required
+                    className="h-8 text-xs"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="new-phone">Téléphone</Label>
+                <div className="space-y-1">
+                  <Label htmlFor="new-phone" className="text-xs">Téléphone</Label>
                   <Input
                     id="new-phone"
                     type="tel"
                     value={newAdminForm.phone}
                     onChange={(e) => setNewAdminForm(prev => ({ ...prev, phone: e.target.value }))}
-                    placeholder="+224 622 123 456"
+                    placeholder="+224 ..."
+                    className="h-8 text-xs"
                   />
                 </div>
               </div>
-              <div className="flex gap-2 pt-4">
-                <Button type="submit" size="sm" disabled={loading}>
-                  <Save className="h-4 w-4 mr-2" />
+              <div className="flex gap-2 pt-1">
+                <Button type="submit" size="sm" disabled={loading} className="h-8 px-3 text-xs gap-1">
+                  <Save className="h-4 w-4" />
                   Enregistrer
                 </Button>
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
+                  className="h-8 px-3 text-xs"
                   onClick={() => {
                     setIsAddingAdmin(false);
                     setNewAdminForm({ name: '', email: '', phone: '', position: '' });
                   }}
+                  disabled={loading}
                 >
                   Annuler
                 </Button>
@@ -318,36 +297,16 @@ const ProjectAdministratorsManager: React.FC<ProjectAdministratorsManagerProps> 
                       >
                         <Edit2 className="h-4 w-4" />
                       </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            disabled={loading}
-                            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Supprimer l'administrateur</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Êtes-vous sûr de vouloir supprimer <strong>{admin.name}</strong> ?
-                              Cette action est irréversible.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Annuler</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => handleRemoveAdministrator(admin.id)}
-                              className="bg-destructive hover:bg-destructive/90"
-                            >
-                              Supprimer
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={loading}
+                        onClick={() => handleRemoveAdministrator(admin.id)}
+                        className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                        title="Supprimer"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
                 )}
