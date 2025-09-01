@@ -22,11 +22,11 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   useEffect(() => {
     let active = true;
-    supabase.auth.getSession().then(({ data }) => {
+    supabase.auth.getSession().then(({ data }: any) => {
       if (!active) return;
       setAuthed(!!data.session);
     });
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((_e: any, session: any) => {
       if (!active) return;
       setAuthed(!!session);
     });

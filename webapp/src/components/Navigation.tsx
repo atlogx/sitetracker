@@ -33,13 +33,13 @@ export function Navigation() {
 
   useEffect(() => {
     let mounted = true;
-    supabase.auth.getSession().then(({ data }) => {
+    supabase.auth.getSession().then(({ data }: any) => {
       if (mounted) {
         setIsAuthed(!!data.session);
         setChecking(false);
       }
     });
-    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event: any, session: any) => {
       setIsAuthed(!!session);
       if (event === 'SIGNED_IN') {
         toast.success('Connexion établie', {

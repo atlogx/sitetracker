@@ -68,11 +68,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   React.useEffect(() => {
     let active = true
-    supabase.auth.getUser().then(({ data }) => {
+    supabase.auth.getUser().then(({ data }: any) => {
       if (!active) return
       setEmail(data.user?.email ?? null)
     })
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((_e: any, session: any) => {
       setEmail(session?.user?.email ?? null)
     })
     return () => {

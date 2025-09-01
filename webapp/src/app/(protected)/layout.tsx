@@ -113,7 +113,7 @@ export default function ProtectedLayout({ children }: ProtectedLayoutProps) {
 
     check();
 
-    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event: any, session: any) => {
       const loggedIn = !!session;
       setAuthed(loggedIn);
       if (!loggedIn) {

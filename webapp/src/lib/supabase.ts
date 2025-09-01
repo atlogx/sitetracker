@@ -12,13 +12,12 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 // Utilisation côté client: createBrowserClient pour synchroniser les cookies (HTTPOnly) et supporter le refresh SSR.
 // Utilisation côté serveur (Edge / RSC): fallback sur createClient classique.
-let supabase =
+const supabase =
   typeof window === 'undefined'
     ? createClient(supabaseUrl, supabaseAnonKey)
     : createBrowserClient(supabaseUrl, supabaseAnonKey, {
         cookieOptions: {
           name: 'sb-auth',
-          lifetime: 60 * 60 * 24 * 7, // 7 jours
           path: '/',
           sameSite: 'lax'
         }
@@ -538,7 +537,7 @@ export const administratorsService = {
       .eq('project_id', projectId);
     
     if (error) throw error;
-    return data?.map(item => item.administrator) || [];
+    return data?.map((item: any) => item.administrator) || [];
   },
 
   async create(adminData: {
@@ -634,7 +633,7 @@ export const statisticsService = {
 
     const averageProgress = recentProgress?.length 
       ? Math.round(
-          recentProgress.reduce((sum, item) => sum + Number(item.total_progress), 0) / 
+          recentProgress.reduce((sum: number, item: any) => sum + Number(item.total_progress), 0) / 
           recentProgress.length
         )
       : 0;
@@ -662,10 +661,10 @@ export const statisticsService = {
 
     // Calculate aggregated stats
     const totalSites = sites.length;
-    const activeSites = sites.filter(site => site.is_active).length;
+    const activeSites = sites.filter((site: any) => site.is_active).length;
 
     // Get latest progress for each site
-    const siteProgress = sites.map(site => {
+    const siteProgress = sites.map((site: any) => {
       const progressData = site.monthly_progress as DatabaseMonthlyProgress[];
       if (!progressData?.length) return null;
       
@@ -681,12 +680,12 @@ export const statisticsService = {
     }).filter(Boolean);
 
     const averageProgress = siteProgress.length 
-      ? Math.round(siteProgress.reduce((sum, item) => sum + item!.latestProgress, 0) / siteProgress.length)
+      ? Math.round(siteProgress.reduce((sum: number, item: any) => sum + item!.latestProgress, 0) / siteProgress.length)
       : 0;
 
-    const criticalSites = siteProgress.filter(item => item!.latestStatus === 'critical').length;
-    const problematicSites = siteProgress.filter(item => item!.latestStatus === 'problematic').length;
-    const goodSites = siteProgress.filter(item => item!.latestStatus === 'good').length;
+    const criticalSites = siteProgress.filter((item: any) => item!.latestStatus === 'critical').length;
+    const problematicSites = siteProgress.filter((item: any) => item!.latestStatus === 'problematic').length;
+    const goodSites = siteProgress.filter((item: any) => item!.latestStatus === 'good').length;
 
     return {
       totalSites,
