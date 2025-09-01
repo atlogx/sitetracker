@@ -67,10 +67,11 @@ interface ProjectInteractiveClientProps {
   dashboardSiteId: string;
   allMonthly: Record<string, MonthlyProgress[]>;
   onUpdate?: () => void;
+  onDataChange?: (siteId: string, monthData: Partial<MonthlyProgress>) => Promise<void>;
 }
 
 export default function ProjectInteractiveClient(props: ProjectInteractiveClientProps) {
-  const { project, dashboardSiteId, allMonthly } = props;
+  const { project, dashboardSiteId, allMonthly, onDataChange } = props;
 
   const [currentSiteId, setCurrentSiteId] = React.useState(dashboardSiteId);
   const [monthlyBySite, setMonthlyBySite] = React.useState(allMonthly);
@@ -128,6 +129,10 @@ export default function ProjectInteractiveClient(props: ProjectInteractiveClient
 
   const handleSaveMonthlyData = async (monthData: Partial<MonthlyProgress>) => {
     try {
+      // Sauvegarder en base de données via le handler du parent
+      if (onDataChange) {
+        await onDataChange(currentSite.id, monthData);
+      }
 
       const updatedRows = [...rows];
       const existingIndex = updatedRows.findIndex(row => row.month === monthData.month);

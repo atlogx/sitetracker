@@ -418,12 +418,16 @@ export const monthlyProgressService = {
     };
 
     // First try to find existing record
-    const { data: existing } = await supabase
+    const { data: existing, error } = await supabase
       .from('monthly_progress')
       .select('id')
       .eq('site_id', dbData.site_id)
       .eq('month', dbData.month)
-      .single();
+      .maybeSingle();
+
+    if (error) {
+      throw error;
+    }
 
     if (existing) {
       // Update existing record

@@ -71,6 +71,7 @@ export default function ProjectClientWrapper({
       dashboardSiteId={dashboardSiteId}
       allMonthly={allMonthly}
       onUpdate={handleUpdate}
+      onDataChange={handleDataChange}
     />
   );
 }
