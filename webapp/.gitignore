@@ -53,3 +53,4 @@ nitro.config.*
 .cache/
 .turbo/
 .eslintcache
+app_bis
