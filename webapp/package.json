@@ -6,7 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "build:analyze": "ANALYZE=true next build",
+    "type-check": "tsc --noEmit",
+    "preview": "next build && next start",
+    "clean": "rm -rf .next && rm -rf out",
+    "pre-deploy": "bun run type-check && bun run lint && bun run build"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.1",
