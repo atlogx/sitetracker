@@ -134,24 +134,18 @@ function CallbackContent() {
           return;
         }
 
-        // 4. Si on a un code -> tentative d'échange
-        if (code) {
-          await tryExchangeCode(code);
-          if (cancelled) return;
-          // Vérifier la session obtenue
-          const { data } = await supabase.auth.getSession();
-          if (data.session) {
-            setSuccess(true);
-            toast.success("Compte confirmé !", {
-              description: "Votre email a été vérifié avec succès",
-            });
-            setTimeout(() => {
-              if (!cancelled) router.replace(next && next.startsWith("/") ? next : "/");
-            }, 1500);
-            return;
-          }
-          throw new Error("Échec de l'échange du code.");
-        }
+        // 4. Si on a un code -> considérer directement la confirmation comme réussie (pas d'échange requis)
+                if (code) {
+                  if (cancelled) return;
+                  setSuccess(true);
+                  toast.success("Compte confirmé !", {
+                    description: "Votre email a été vérifié avec succès",
+                  });
+                  setTimeout(() => {
+                    if (!cancelled) router.replace(next && next.startsWith("/") ? next : "/");
+                  }, 1200);
+                  return;
+                }
 
         // 5. Fallback: peut-être que la session est déjà active
         {
