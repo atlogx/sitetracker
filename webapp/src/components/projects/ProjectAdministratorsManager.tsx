@@ -6,8 +6,19 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Trash2, Plus, Save, Users, Mail, Phone, Edit2 } from 'lucide-react';
+import { Trash2, Save, Users, Edit2, UserPlus, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 interface ProjectAdministratorsManagerProps {
   projectId: string;
@@ -19,7 +30,6 @@ interface ProjectAdministratorsManagerProps {
   loading?: boolean;
   hideTitle?: boolean;
   hideEmptyState?: boolean;
-
 }
 
 interface AdministratorFormData {
@@ -39,7 +49,6 @@ const ProjectAdministratorsManager: React.FC<ProjectAdministratorsManagerProps> 
   hideTitle = false,
   hideEmptyState = false
 }) => {
-  // États pour les administrateurs
   const [editingAdmin, setEditingAdmin] = useState<string | null>(null);
   const [adminForms, setAdminForms] = useState<Record<string, AdministratorFormData>>({});
   const [newAdminForm, setNewAdminForm] = useState<AdministratorFormData>({
@@ -50,7 +59,6 @@ const ProjectAdministratorsManager: React.FC<ProjectAdministratorsManagerProps> 
   });
   const [isAddingAdmin, setIsAddingAdmin] = useState(false);
 
-  // Initialiser les formulaires d'édition des administrateurs
   useEffect(() => {
     const forms: Record<string, AdministratorFormData> = {};
     administrators.forEach(admin => {
@@ -100,82 +108,84 @@ const ProjectAdministratorsManager: React.FC<ProjectAdministratorsManagerProps> 
   };
 
   return (
-    <div className="space-y-6">
-      {/* En-tête conditionnel */}
+    <div className="space-y-4">
       {!hideTitle && (
         <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold text-foreground">Administrateurs du projet</h2>
-            <p className="text-muted-foreground">
-              Gérez les administrateurs responsables du projet &quot;{projectName}&quot;
-            </p>
+          <div className="flex items-center gap-2">
+            <Users className="h-5 w-5 text-muted-foreground" />
+            <h3 className="text-lg font-semibold">Administrateurs</h3>
+            <Badge variant="secondary" className="ml-2">
+              {administrators.length}
+            </Badge>
           </div>
-        </div>
-      )}
-      
-      {/* Bouton d'ajout - seulement si pas de render custom */}
-      {!hideTitle && (
-        <div className="flex justify-end">
           <Button
-            variant="outline"
-            size="sm"
             onClick={() => setIsAddingAdmin(true)}
             disabled={isAddingAdmin || loading}
-            className="bg-primary/5 hover:bg-primary/10 border-primary/20"
+            size="sm"
+            className="gap-2"
           >
-            <Plus className="h-4 w-4 mr-2" />
-            Ajouter un administrateur
+            <UserPlus className="h-4 w-4" />
+            Ajouter
           </Button>
         </div>
       )}
 
-      {/* Formulaire d'ajout */}
       {isAddingAdmin && (
-        <Card className="border-dashed border-2 border-primary/30 bg-primary/5">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              Nouvel administrateur
-            </CardTitle>
+        <Card className="border-dashed border-2">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base">Nouvel administrateur</CardTitle>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setIsAddingAdmin(false);
+                  setNewAdminForm({ name: '', email: '', phone: '', position: '' });
+                }}
+                className="h-8 w-8 p-0"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
           </CardHeader>
-          <CardContent>
-            <form onSubmit={handleAddAdministrator} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="new-admin-position">Titre/Poste *</Label>
+          <CardContent className="p-3">
+            <form onSubmit={handleAddAdministrator} className="space-y-3">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="new-position">Poste</Label>
                   <Input
-                    id="new-admin-position"
+                    id="new-position"
                     value={newAdminForm.position}
                     onChange={(e) => setNewAdminForm(prev => ({ ...prev, position: e.target.value }))}
-                    placeholder="ex: Directeur de projet, Chef de mission..."
+                    placeholder="Directeur de projet"
                     required
                   />
                 </div>
-                <div>
-                  <Label htmlFor="new-admin-name">Nom complet *</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="new-name">Nom</Label>
                   <Input
-                    id="new-admin-name"
+                    id="new-name"
                     value={newAdminForm.name}
                     onChange={(e) => setNewAdminForm(prev => ({ ...prev, name: e.target.value }))}
-                    placeholder="Nom et prénom"
+                    placeholder="Jean Dupont"
                     required
                   />
                 </div>
-                <div>
-                  <Label htmlFor="new-admin-email">Email *</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="new-email">Email</Label>
                   <Input
-                    id="new-admin-email"
+                    id="new-email"
                     type="email"
                     value={newAdminForm.email}
                     onChange={(e) => setNewAdminForm(prev => ({ ...prev, email: e.target.value }))}
-                    placeholder="nom@example.com"
+                    placeholder="jean@example.com"
                     required
                   />
                 </div>
-                <div>
-                  <Label htmlFor="new-admin-phone">Téléphone</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="new-phone">Téléphone</Label>
                   <Input
-                    id="new-admin-phone"
+                    id="new-phone"
                     type="tel"
                     value={newAdminForm.phone}
                     onChange={(e) => setNewAdminForm(prev => ({ ...prev, phone: e.target.value }))}
@@ -183,10 +193,10 @@ const ProjectAdministratorsManager: React.FC<ProjectAdministratorsManagerProps> 
                   />
                 </div>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 pt-4">
                 <Button type="submit" size="sm" disabled={loading}>
                   <Save className="h-4 w-4 mr-2" />
-                  Ajouter
+                  Enregistrer
                 </Button>
                 <Button
                   type="button"
@@ -205,41 +215,47 @@ const ProjectAdministratorsManager: React.FC<ProjectAdministratorsManagerProps> 
         </Card>
       )}
 
-      {/* Liste des administrateurs existants */}
       {administrators.length === 0 && !hideEmptyState ? (
-        <div className="text-center py-8 text-muted-foreground border-2 border-dashed border-muted rounded-lg bg-muted/20">
-          <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
-          <div>
-            <h3 className="text-lg font-medium text-foreground">Aucun administrateur</h3>
-            <p className="text-muted-foreground">
-              Ajoutez des administrateurs pour ce projet
+        <Card className="border-dashed border-2">
+          <CardContent className="flex flex-col items-center justify-center py-6 px-3">
+            <Users className="h-8 w-8 text-muted-foreground mb-2" />
+            <p className="text-sm text-muted-foreground text-center">
+              Aucun administrateur assigné à ce projet
             </p>
-          </div>
-        </div>
-      ) : administrators.length > 0 ? (
-        <div className="space-y-3">
+            <Button
+              onClick={() => setIsAddingAdmin(true)}
+              variant="outline"
+              size="sm"
+              className="mt-3"
+            >
+              <UserPlus className="h-4 w-4 mr-2" />
+              Ajouter le premier
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-4">
           {administrators.map((admin) => (
-            <Card key={admin.id} className="transition-all hover:shadow-md border-l-4 border-l-primary/30">
-              <CardContent className="p-5">
+            <Card key={admin.id} className="hover:shadow-sm transition-shadow">
+              <CardContent className="p-3">
                 {editingAdmin === admin.id ? (
-                  // Mode édition
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 gap-4">
-                      <div>
-                        <Label>Titre/Poste</Label>
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label>Poste</Label>
                         <Input
                           value={adminForms[admin.id]?.position || ''}
                           onChange={(e) => updateAdminForm(admin.id, 'position', e.target.value)}
                         />
                       </div>
-                      <div>
-                        <Label>Nom complet</Label>
+                      <div className="space-y-2">
+                        <Label>Nom</Label>
                         <Input
                           value={adminForms[admin.id]?.name || ''}
                           onChange={(e) => updateAdminForm(admin.id, 'name', e.target.value)}
                         />
                       </div>
-                      <div>
+                      <div className="space-y-2">
                         <Label>Email</Label>
                         <Input
                           type="email"
@@ -247,7 +263,7 @@ const ProjectAdministratorsManager: React.FC<ProjectAdministratorsManagerProps> 
                           onChange={(e) => updateAdminForm(admin.id, 'email', e.target.value)}
                         />
                       </div>
-                      <div>
+                      <div className="space-y-2">
                         <Label>Téléphone</Label>
                         <Input
                           type="tel"
@@ -256,7 +272,7 @@ const ProjectAdministratorsManager: React.FC<ProjectAdministratorsManagerProps> 
                         />
                       </div>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 pt-3">
                       <Button
                         size="sm"
                         onClick={() => handleUpdateAdministrator(admin.id)}
@@ -275,34 +291,24 @@ const ProjectAdministratorsManager: React.FC<ProjectAdministratorsManagerProps> 
                     </div>
                   </div>
                 ) : (
-                  // Mode affichage
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-                        <Users className="h-6 w-6 text-primary" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <Badge variant="secondary" className="text-xs">
+                    <div className="grid grid-cols-2 gap-6 flex-1">
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-xs">
                             {admin.position || 'Administrateur'}
                           </Badge>
                         </div>
-                        <h4 className="font-semibold text-base">{admin.name}</h4>
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                          <div className="flex items-center gap-1">
-                            <Mail className="h-3 w-3" />
-                            <span>{admin.email}</span>
-                          </div>
-                          {admin.phone && (
-                            <div className="flex items-center gap-1">
-                              <Phone className="h-3 w-3" />
-                              <span>{admin.phone}</span>
-                            </div>
-                          )}
-                        </div>
+                        <p className="font-medium">{admin.name}</p>
+                      </div>
+                      <div className="space-y-2">
+                        <p className="text-sm text-muted-foreground">{admin.email}</p>
+                        {admin.phone && (
+                          <p className="text-sm text-muted-foreground">{admin.phone}</p>
+                        )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1 ml-4">
                       <Button
                         variant="ghost"
                         size="sm"
@@ -312,15 +318,36 @@ const ProjectAdministratorsManager: React.FC<ProjectAdministratorsManagerProps> 
                       >
                         <Edit2 className="h-4 w-4" />
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRemoveAdministrator(admin.id)}
-                        disabled={loading}
-                        className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={loading}
+                            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Supprimer l'administrateur</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Êtes-vous sûr de vouloir supprimer <strong>{admin.name}</strong> ?
+                              Cette action est irréversible.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Annuler</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleRemoveAdministrator(admin.id)}
+                              className="bg-destructive hover:bg-destructive/90"
+                            >
+                              Supprimer
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   </div>
                 )}
@@ -328,7 +355,7 @@ const ProjectAdministratorsManager: React.FC<ProjectAdministratorsManagerProps> 
             </Card>
           ))}
         </div>
-      ) : null}
+      )}
     </div>
   );
 };

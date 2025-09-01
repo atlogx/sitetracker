@@ -122,31 +122,19 @@ export async function POST(req: NextRequest) {
       name,
       organization_id,
       code,
-      client_name,
-      client_email,
-      client_phone,
-      project_director_name,
-      project_director_email,
-      project_director_phone,
-      mission_manager_name,
-      mission_manager_email,
-      mission_manager_phone,
+      owner_name,
+      owner_email,
+      owner_phone,
       is_active,
       global_status,
+      administrators,
     } = body as Record<string, unknown>;
 
     const required: Record<string, unknown> = {
       name,
       organization_id,
-      client_name,
-      client_email,
-      client_phone,
-      project_director_name,
-      project_director_email,
-      project_director_phone,
-      mission_manager_name,
-      mission_manager_email,
-      mission_manager_phone,
+      owner_name,
+      owner_email,
     };
 
     const missing = Object.entries(required)
@@ -164,26 +152,19 @@ export async function POST(req: NextRequest) {
       name: String(name),
       organization_id: String(organization_id),
       code: code ? String(code) : null,
-      client_name: String(client_name),
-      client_email: String(client_email),
-      client_phone: String(client_phone),
-      project_director_name: String(project_director_name),
-      project_director_email: String(project_director_email),
-      project_director_phone: String(project_director_phone),
-      mission_manager_name: String(mission_manager_name),
-      mission_manager_email: String(mission_manager_email),
-      mission_manager_phone: String(mission_manager_phone),
+      owner_name: String(owner_name),
+      owner_email: String(owner_email),
+      owner_phone: owner_phone ? String(owner_phone) : '',
       is_active: typeof is_active === 'boolean' ? is_active : true,
-      global_status:
-        typeof global_status === 'string'
+      status: typeof global_status === 'string'
           ? (global_status as 'active' | 'demobilized')
           : 'active',
       slug: generateSlug(String(name)),
     };
 
-    // If is_active false but no custom global_status given, align:
-    if (record.is_active === false && record.global_status === 'active') {
-      record.global_status = 'demobilized';
+    // If is_active false but no custom status given, align:
+    if (record.is_active === false && record.status === 'active') {
+      record.status = 'demobilized';
     }
 
     const supabase = getServiceSupabase();
@@ -195,6 +176,42 @@ export async function POST(req: NextRequest) {
 
     if (error) {
       return jsonError(error.message, 400);
+    }
+
+    // Créer les administrateurs du projet si fournis
+    if (administrators && Array.isArray(administrators) && administrators.length > 0) {
+      for (const admin of administrators) {
+        if (admin && typeof admin === 'object' && admin.name && admin.email) {
+          try {
+            // Créer l'administrateur dans la table administrators
+            const { data: adminData, error: adminError } = await supabase
+              .from('administrators')
+              .insert({
+                organization_id: record.organization_id,
+                name: String(admin.name),
+                email: String(admin.email),
+                phone: admin.phone ? String(admin.phone) : null,
+                position: admin.position ? String(admin.position) : null,
+                role: 'project-level'
+              })
+              .select('id')
+              .single();
+
+            if (!adminError && adminData) {
+              // Lier l'administrateur au projet
+              await supabase
+                .from('project_administrators')
+                .insert({
+                  project_id: data.id,
+                  administrator_id: adminData.id
+                });
+            }
+          } catch (adminErr) {
+            console.error('Erreur création administrateur:', adminErr);
+            // Continue avec les autres administrateurs même si un échoue
+          }
+        }
+      }
     }
 
     return jsonOk(data, 201);
@@ -228,17 +245,11 @@ export async function PUT(req: NextRequest) {
       'name',
       'code',
       'organization_id',
-      'client_name',
-      'client_email',
-      'client_phone',
-      'project_director_name',
-      'project_director_email',
-      'project_director_phone',
-      'mission_manager_name',
-      'mission_manager_email',
-      'mission_manager_phone',
+      'owner_name',
+      'owner_email',
+      'owner_phone',
       'is_active',
-      'global_status',
+      'status',
       'slug',
     ]);
 
@@ -259,16 +270,16 @@ export async function PUT(req: NextRequest) {
       updates.slug = generateSlug(String(updates.name));
     }
 
-    // Align global_status if is_active is toggled
+    // Align status if is_active is toggled
     if (
       Object.prototype.hasOwnProperty.call(updates, 'is_active') &&
       typeof updates.is_active === 'boolean'
     ) {
-      if (updates.is_active === false && !updates.global_status) {
-        updates.global_status = 'demobilized';
+      if (updates.is_active === false && !updates.status) {
+        updates.status = 'demobilized';
       }
-      if (updates.is_active === true && !updates.global_status) {
-        updates.global_status = 'active';
+      if (updates.is_active === true && !updates.status) {
+        updates.status = 'active';
       }
     }
 

@@ -17,8 +17,7 @@ import {
   Mail,
   Phone,
   Settings,
-  Save,
-  Trash2
+  Save
 
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -67,11 +66,11 @@ interface ProjectInteractiveClientProps {
   project: Project;
   dashboardSiteId: string;
   allMonthly: Record<string, MonthlyProgress[]>;
-  onDataChange?: (siteId: string, monthData: Partial<MonthlyProgress>) => Promise<void>;
+  onUpdate?: () => void;
 }
 
 export default function ProjectInteractiveClient(props: ProjectInteractiveClientProps) {
-  const { project, dashboardSiteId, allMonthly, onDataChange } = props;
+  const { project, dashboardSiteId, allMonthly } = props;
 
   const [currentSiteId, setCurrentSiteId] = React.useState(dashboardSiteId);
   const [monthlyBySite, setMonthlyBySite] = React.useState(allMonthly);
@@ -96,14 +95,7 @@ export default function ProjectInteractiveClient(props: ProjectInteractiveClient
     email: project.ownerEmail,
     phone: project.ownerPhone || ''
   });
-  const [isAddingAdmin, setIsAddingAdmin] = useState(false);
-  const [adminForms, setAdminForms] = useState<Array<{
-    id: string;
-    name: string;
-    email: string;
-    phone: string;
-    position: string;
-  }>>([]);
+
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingSite, setEditingSite] = useState<Site | null>(null);
@@ -136,9 +128,6 @@ export default function ProjectInteractiveClient(props: ProjectInteractiveClient
 
   const handleSaveMonthlyData = async (monthData: Partial<MonthlyProgress>) => {
     try {
-      if (onDataChange) {
-        await onDataChange(currentSite.id, monthData);
-      }
 
       const updatedRows = [...rows];
       const existingIndex = updatedRows.findIndex(row => row.month === monthData.month);
@@ -371,70 +360,7 @@ export default function ProjectInteractiveClient(props: ProjectInteractiveClient
     }
   };
 
-  const handleAddNewForm = () => {
-    const newForm = {
-      id: `form-${Date.now()}`,
-      name: '',
-      email: '',
-      phone: '',
-      position: ''
-    };
-    setAdminForms(prev => [...prev, newForm]);
-  };
 
-  const handleRemoveForm = (formId: string) => {
-    setAdminForms(prev => prev.filter(form => form.id !== formId));
-  };
-
-  const handleUpdateForm = (formId: string, field: string, value: string) => {
-    setAdminForms(prev => prev.map(form =>
-      form.id === formId ? { ...form, [field]: value } : form
-    ));
-  };
-
-  const handleValidateAllAdmins = async () => {
-    const validForms = adminForms.filter(form =>
-      form.name.trim() && form.email.trim() && form.position.trim()
-    );
-
-    if (validForms.length === 0) {
-      toast.error("Aucun formulaire valide à enregistrer");
-      return;
-    }
-
-    try {
-      const promises = validForms.map(admin =>
-        fetch('/api/administrators', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            name: admin.name,
-            email: admin.email,
-            phone: admin.phone,
-            position: admin.position,
-            role: 'project-level',
-            projectId: project.id
-          }),
-        })
-      );
-
-      const responses = await Promise.all(promises);
-      const allSuccessful = responses.every(response => response.ok);
-
-      if (allSuccessful) {
-        toast.success(`${validForms.length} administrateur(s) ajouté(s) avec succès`);
-        setIsAddingAdmin(false);
-        setAdminForms([]);
-        window.location.reload();
-      } else {
-        throw new Error('Erreur lors de l\'ajout de certains administrateurs');
-      }
-    } catch {
-      toast.error("Erreur lors de l'ajout des administrateurs");
-    }
-  };
 
   // Statistiques des sites
   const getSiteStatus = (site: Site) => {
@@ -498,7 +424,27 @@ export default function ProjectInteractiveClient(props: ProjectInteractiveClient
                 <div className="flex items-center gap-2">
                   <Users className="h-4 w-4 text-muted-foreground" />
                   <span className="text-muted-foreground">Administrateurs:</span>
-                  <span className="font-medium">{(project.administrators || []).length}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{(project.administrators || []).length}</span>
+                    {(project.administrators || []).length > 0 && (
+                      <div className="flex -space-x-1">
+                        {(project.administrators || []).slice(0, 3).map((admin) => (
+                          <div
+                            key={admin.id}
+                            className="w-6 h-6 bg-primary/10 border-2 border-background rounded-full flex items-center justify-center text-xs font-medium"
+                            title={`${admin.name} - ${admin.position || 'Administrateur'}`}
+                          >
+                            {admin.name.charAt(0).toUpperCase()}
+                          </div>
+                        ))}
+                        {(project.administrators || []).length > 3 && (
+                          <div className="w-6 h-6 bg-muted border-2 border-background rounded-full flex items-center justify-center text-xs font-medium text-muted-foreground">
+                            +{(project.administrators || []).length - 3}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -786,127 +732,13 @@ export default function ProjectInteractiveClient(props: ProjectInteractiveClient
 
             <hr className="border-border" />
 
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-medium">Administrateurs du projet</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Responsables des alertes et du suivi
-                  </p>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    if (!isAddingAdmin) {
-                      setIsAddingAdmin(true);
-                      handleAddNewForm();
-                    } else {
-                      handleAddNewForm();
-                    }
-                  }}
-                  className="bg-primary/5 hover:bg-primary/10 border-primary/20"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  {isAddingAdmin ? 'Ajouter un autre' : 'Ajouter'}
-                </Button>
-              </div>
-
-              {/* Formulaires d'ajout d'administrateurs */}
-              {isAddingAdmin && (
-                <div className="space-y-4 p-4 bg-primary/5 rounded-lg border-2 border-dashed border-primary/30">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Users className="h-5 w-5 text-primary" />
-                    <h4 className="font-medium">Ajouter des administrateurs</h4>
-                  </div>
-
-                  {/* Liste des formulaires */}
-                  <div className="space-y-4 max-h-96 overflow-y-auto">
-                    {adminForms.map((form, index) => (
-                      <div key={form.id} className="p-3 bg-white/70 rounded-lg border relative">
-                        <div className="flex items-center justify-between mb-3">
-                          <h5 className="text-sm font-medium">Administrateur #{index + 1}</h5>
-                          {adminForms.length > 1 && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleRemoveForm(form.id)}
-                              className="h-6 w-6 p-0 text-destructive hover:text-destructive"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          )}
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          <div>
-                            <Label>Poste *</Label>
-                            <Input
-                              value={form.position}
-                              onChange={(e) => handleUpdateForm(form.id, 'position', e.target.value)}
-                              placeholder="ex: Directeur de projet, Chef de mission..."
-                              required
-                            />
-                          </div>
-                          <div>
-                            <Label>Nom complet *</Label>
-                            <Input
-                              value={form.name}
-                              onChange={(e) => handleUpdateForm(form.id, 'name', e.target.value)}
-                              placeholder="Nom et prénom"
-                              required
-                            />
-                          </div>
-                          <div>
-                            <Label>Email *</Label>
-                            <Input
-                              type="email"
-                              value={form.email}
-                              onChange={(e) => handleUpdateForm(form.id, 'email', e.target.value)}
-                              placeholder="nom@example.com"
-                              required
-                            />
-                          </div>
-                          <div>
-                            <Label>Téléphone</Label>
-                            <Input
-                              type="tel"
-                              value={form.phone}
-                              onChange={(e) => handleUpdateForm(form.id, 'phone', e.target.value)}
-                              placeholder="+224 622 123 456"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Boutons d'action globaux */}
-                  <div className="flex gap-2 pt-2 border-t">
-                    <Button onClick={handleValidateAllAdmins} size="sm">
-                      <Save className="h-4 w-4 mr-2" />
-                      Enregistrer tous ({adminForms.length})
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setIsAddingAdmin(false);
-                        setAdminForms([]);
-                      }}
-                    >
-                      Annuler
-                    </Button>
-                  </div>
-                </div>
-              )}
-
+            <div className="space-y-6">
               <ProjectAdministratorsManager
                 projectId={project.id}
                 projectName={project.name}
                 administrators={project.administrators || []}
-                hideTitle={true}
-                hideEmptyState={isAddingAdmin}
+                hideTitle={false}
+                hideEmptyState={false}
                 onAddAdministrator={async (adminData) => {
                   try {
                     // Créer l'administrateur
@@ -922,13 +754,12 @@ export default function ProjectInteractiveClient(props: ProjectInteractiveClient
                     });
 
                     if (!adminResponse.ok) {
-                      throw new Error('Erreur lors de la création de l\'administrateur');
+                      throw new Error('Erreur création administrateur');
                     }
 
-                    const adminResult = await adminResponse.json();
-                    const newAdmin = adminResult.data;
+                    const createdAdmin = await adminResponse.json();
 
-                    // Lier l'administrateur au projet
+                    // Lier au projet
                     const linkResponse = await fetch('/api/project-administrators', {
                       method: 'POST',
                       headers: {
@@ -936,56 +767,70 @@ export default function ProjectInteractiveClient(props: ProjectInteractiveClient
                       },
                       body: JSON.stringify({
                         project_id: project.id,
-                        administrator_id: newAdmin.id,
+                        administrator_id: createdAdmin.data.id,
                       }),
                     });
 
                     if (!linkResponse.ok) {
-                      throw new Error('Erreur lors de la liaison au projet');
+                      throw new Error('Erreur liaison administrateur');
                     }
 
-                    toast.success("Administrateur ajouté avec succès");
-                    window.location.reload();
+                    toast.success('Administrateur ajouté avec succès');
+                    if (props.onUpdate) props.onUpdate();
                   } catch (error) {
                     console.error('Erreur:', error);
-                    toast.error("Erreur lors de l'ajout de l'administrateur");
+                    toast.error('Erreur lors de l\'ajout de l\'administrateur');
                   }
                 }}
-                onUpdateAdministrator={async (adminId, updates) => {
+                onUpdateAdministrator={async (adminId, adminData) => {
                   try {
                     const response = await fetch('/api/administrators', {
                       method: 'PUT',
                       headers: {
                         'Content-Type': 'application/json',
                       },
-                      body: JSON.stringify({ id: adminId, ...updates }),
+                      body: JSON.stringify({
+                        id: adminId,
+                        ...adminData,
+                      }),
                     });
 
-                    if (response.ok) {
-                      toast.success("Administrateur modifié avec succès");
-                      window.location.reload();
-                    } else {
-                      throw new Error('Erreur lors de la modification');
+                    if (!response.ok) {
+                      throw new Error('Erreur mise à jour administrateur');
                     }
-                  } catch {
-                    toast.error("Erreur lors de la modification de l'administrateur");
+
+                    toast.success('Administrateur mis à jour avec succès');
+                    if (props.onUpdate) props.onUpdate();
+                  } catch (error) {
+                    console.error('Erreur:', error);
+                    toast.error('Erreur lors de la mise à jour de l\'administrateur');
                   }
                 }}
                 onRemoveAdministrator={async (adminId) => {
                   try {
-                    // Supprimer la liaison avec le projet
-                    const response = await fetch(`/api/project-administrators?projectId=${project.id}&administratorId=${adminId}`, {
+                    // Délier du projet
+                    const unlinkResponse = await fetch(`/api/project-administrators?projectId=${project.id}&administratorId=${adminId}`, {
                       method: 'DELETE',
                     });
 
-                    if (response.ok) {
-                      toast.success("Administrateur retiré du projet avec succès");
-                      window.location.reload();
-                    } else {
-                      throw new Error('Erreur lors de la suppression de la liaison');
+                    if (!unlinkResponse.ok) {
+                      throw new Error('Erreur déliaison administrateur');
                     }
-                  } catch {
-                    toast.error("Erreur lors de la suppression de l'administrateur du projet");
+
+                    // Supprimer l'administrateur
+                    const deleteResponse = await fetch(`/api/administrators?id=${adminId}`, {
+                      method: 'DELETE',
+                    });
+
+                    if (!deleteResponse.ok) {
+                      throw new Error('Erreur suppression administrateur');
+                    }
+
+                    toast.success('Administrateur supprimé avec succès');
+                    if (props.onUpdate) props.onUpdate();
+                  } catch (error) {
+                    console.error('Erreur:', error);
+                    toast.error('Erreur lors de la suppression de l\'administrateur');
                   }
                 }}
               />

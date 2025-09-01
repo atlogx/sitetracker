@@ -111,10 +111,13 @@ export default function ProjectsPage() {
           projects={combinedProjects}
           loading={loading}
           onCreateProject={() => {
-            window.location.href = '/site-tracker/projects/new';
+            // La création se fait maintenant via le dialog dans ProjectListCompact
           }}
           onOpenProject={(p) => {
             window.location.href = `/site-tracker/projects/${generateSlug(p.name)}`;
+          }}
+          onProjectCreated={() => {
+            loadProjects();
           }}
         />
       </React.Suspense>

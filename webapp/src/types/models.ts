@@ -19,6 +19,8 @@ export interface DatabaseProject {
   id: string;
   organization_id: string;
   name: string;
+  code?: string;
+  slug: string;
   owner_name: string;
   owner_email: string;
   owner_phone?: string;
@@ -115,6 +117,9 @@ export interface DatabaseProjectAdministrator {
 export interface ProjectWithRelations extends DatabaseProject {
   organization?: DatabaseOrganization;
   sites?: SiteWithRelations[];
+  project_administrators?: {
+    administrator: DatabaseAdministrator;
+  }[];
 }
 
 export interface SiteWithRelations extends DatabaseSite {
@@ -433,8 +438,21 @@ export function convertAlertType(dbType: string): AlertType {
 }
 
 // Fonctions de conversion des données DB vers types métier
-export function convertDatabaseToProject(dbProject: ProjectWithRelations, administrators: Administrator[] = []): Project {
+export function convertDatabaseToProject(dbProject: ProjectWithRelations): Project {
   const sites = (dbProject.sites || []).map(convertDatabaseToSite);
+  
+  // Extraire les administrateurs depuis la relation
+  const administrators = (dbProject.project_administrators || []).map(pa => ({
+    id: pa.administrator.id,
+    name: pa.administrator.name,
+    email: pa.administrator.email,
+    phone: pa.administrator.phone || '',
+    position: pa.administrator.position || '',
+    role: pa.administrator.role as 'org-level' | 'project-level',
+    organizationId: pa.administrator.organization_id,
+    createdAt: pa.administrator.created_at,
+    updatedAt: pa.administrator.updated_at
+  }));
   
   // Calcul des stats
   const totalSites = sites.length;

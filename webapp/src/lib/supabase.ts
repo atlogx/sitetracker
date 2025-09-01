@@ -88,6 +88,9 @@ export const projectsService = {
         sites(
           *,
           monthly_progress(*)
+        ),
+        project_administrators(
+          administrator:administrators(*)
         )
       `)
       .order('created_at', { ascending: false });
@@ -125,7 +128,11 @@ export const projectsService = {
       .from('projects')
       .select(`
         *,
-        sites(*)
+        organization:organizations(*),
+        sites(*),
+        project_administrators(
+          administrator:administrators(*)
+        )
       `)
       .eq('organization_id', organizationId)
       .order('created_at', { ascending: false });
@@ -159,8 +166,8 @@ export const projectsService = {
   },
   async create(
     payload: Pick<DatabaseProject,
-      'name' | 'owner_name' | 'owner_email' | 'organization_id'
-    > & Partial<Pick<DatabaseProject, 'owner_phone'>>
+      'name' | 'owner_name' | 'owner_email' | 'organization_id' | 'slug'
+    > & Partial<Pick<DatabaseProject, 'owner_phone' | 'code'>>
   ): Promise<DatabaseProject> {
     const { data, error } = await supabase
       .from('projects')
@@ -174,7 +181,7 @@ export const projectsService = {
   async update(
     id: string,
     payload: Partial<Pick<DatabaseProject,
-      'name' | 'owner_name' | 'owner_email' | 'owner_phone' | 'status' | 'is_active'
+      'name' | 'owner_name' | 'owner_email' | 'owner_phone' | 'status' | 'is_active' | 'slug' | 'code'
     >>
   ): Promise<DatabaseProject> {
     const { data, error } = await supabase

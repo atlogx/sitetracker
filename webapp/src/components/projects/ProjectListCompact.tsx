@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useMemo, useCallback } from 'react';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import type { Project } from '@/types/models';
-import { projectsService } from '@/lib/supabase';
 
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -21,7 +21,9 @@ import {
   Activity,
   ChevronLeftIcon,
   ChevronRightIcon,
-  Trash2
+  Trash2,
+  Loader2,
+  AlertTriangle
 } from 'lucide-react';
 import {
   Pagination,
@@ -56,29 +58,51 @@ SelectValue
 /*  Types locaux                                                             */
 /* -------------------------------------------------------------------------- */
 
-export interface ProjectListCompactProps {
+interface ProjectListCompactProps {
   projects: Project[];
   loading?: boolean;
   onCreateProject?: () => void;
   onOpenProject?: (project: Project) => void;
+  onProjectCreated?: () => void;
   className?: string;
 }
 
 /* -------------------------------------------------------------------------- */
-/*  Helpers statut                                                           */
+/*  Types locaux et système de couleurs                                      */
 /* -------------------------------------------------------------------------- */
 
 type TrendStatus = 'good' | 'problematic' | 'critical' | 'none';
 
-function statusToColor(status?: TrendStatus): string {
+// Système de couleurs cohérent avec le thème shadcn/ui
+const statusColors = {
+  critical: {
+    bg: 'bg-destructive/10',
+    text: 'text-destructive',
+    border: 'border-destructive/20',
+    indicator: 'bg-destructive'
+  },
+  problematic: {
+    bg: 'bg-orange-500/10',
+    text: 'text-orange-700 dark:text-orange-300',
+    border: 'border-orange-500/20',
+    indicator: 'bg-orange-500'
+  },
+  good: {
+    bg: 'bg-emerald-500/10',
+    text: 'text-emerald-700 dark:text-emerald-300',
+    border: 'border-emerald-500/20',
+    indicator: 'bg-emerald-500'
+  }
+} as const;
+
+function statusToColor(status?: string): string {
   switch (status) {
     case 'good':
-      return 'bg-green-500';
+      return statusColors.good.indicator;
     case 'problematic':
-      return 'bg-amber-500';
+      return statusColors.problematic.indicator;
     case 'critical':
-      return 'bg-red-500';
-    case 'none':
+      return statusColors.critical.indicator;
     default:
       return 'bg-muted';
   }
@@ -94,7 +118,20 @@ function statusToLabel(status?: TrendStatus): string {
       return 'Critique';
     case 'none':
     default:
-      return 'Non renseigné';
+      return 'N/A';
+  }
+}
+
+function getStatusTextColor(status?: string): string {
+  switch (status) {
+    case 'good':
+      return statusColors.good.text;
+    case 'problematic':
+      return statusColors.problematic.text;
+    case 'critical':
+      return statusColors.critical.text;
+    default:
+      return 'text-muted-foreground';
   }
 }
 
@@ -206,15 +243,15 @@ const InlineKPIs: React.FC<InlineKPIsProps> = ({
         </span>
       )}
       <span className="flex items-center gap-1">
-        <span className="inline-block h-2 w-2 rounded-sm bg-red-500" />
+        <span className={`inline-block h-2 w-2 rounded-sm ${statusColors.critical.indicator}`} />
         {criticalSites}
       </span>
       <span className="flex items-center gap-1">
-        <span className="inline-block h-2 w-2 rounded-sm bg-amber-500" />
+        <span className={`inline-block h-2 w-2 rounded-sm ${statusColors.problematic.indicator}`} />
         {problematicSites}
       </span>
       <span className="flex items-center gap-1">
-        <span className="inline-block h-2 w-2 rounded-sm bg-green-500" />
+        <span className={`inline-block h-2 w-2 rounded-sm ${statusColors.good.indicator}`} />
         {goodSites}
       </span>
     </div>
@@ -259,11 +296,11 @@ const ProjectRow: React.FC<ProjectRowProps> = ({
         className={[
           'absolute left-0 top-0 h-full w-1',
           current === 'good'
-            ? 'bg-green-500'
+            ? statusColors.good.indicator
             : current === 'problematic'
-            ? 'bg-amber-500'
+            ? statusColors.problematic.indicator
             : current === 'critical'
-            ? 'bg-red-500'
+            ? statusColors.critical.indicator
             : 'bg-muted'
         ].join(' ')}
         aria-hidden="true"
@@ -361,12 +398,12 @@ const ProjectRow: React.FC<ProjectRowProps> = ({
 /*  Composant principal                                                       */
 /* -------------------------------------------------------------------------- */
 
-import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 export const ProjectListCompact: React.FC<ProjectListCompactProps> = ({
   projects,
   loading = false,
   onCreateProject,
   onOpenProject,
+  onProjectCreated,
   className
 }) => {
   const [search, setSearch] = useState('');
@@ -380,12 +417,13 @@ export const ProjectListCompact: React.FC<ProjectListCompactProps> = ({
     ownerName: '',
     ownerEmail: '',
     ownerPhone: '',
-    administrators: [
-      { name: '', email: '', phone: '', position: 'Directeur de projet' },
-      { name: '', email: '', phone: '', position: 'Chef de mission' }
-    ]
+    organizationId: '',
+    administrators: []
   });
   const [creating, setCreating] = useState(false);
+  const [organizations, setOrganizations] = useState<Array<{id: string, name: string}>>([]);
+  const [loadingOrganizations, setLoadingOrganizations] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -476,17 +514,41 @@ export const ProjectListCompact: React.FC<ProjectListCompactProps> = ({
     []
   );
 
-  const handleCreateProject = useCallback(() => {
-    setNewProject({
-      name: '',
-      ownerName: '',
-      ownerEmail: '',
-      ownerPhone: '',
-      administrators: [
-        { name: '', email: '', phone: '', position: 'Directeur de projet' },
-        { name: '', email: '', phone: '', position: 'Chef de mission' }
-      ]
-    });
+  const handleCreateProject = useCallback(async () => {
+    // Charger les organisations disponibles
+    try {
+      setLoadingOrganizations(true);
+      const response = await fetch('/api/organization');
+      if (response.ok) {
+        const result = await response.json();
+        const orgs = Array.isArray(result.data) ? result.data : [result.data];
+        setOrganizations(orgs);
+        
+        // Pré-sélectionner la première organisation disponible
+        setNewProject({
+          name: '',
+          ownerName: '',
+          ownerEmail: '',
+          ownerPhone: '',
+          organizationId: orgs.length > 0 ? orgs[0].id : '',
+          administrators: []
+        });
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement des organisations:', error);
+      setOrganizations([]);
+      setNewProject({
+        name: '',
+        ownerName: '',
+        ownerEmail: '',
+        ownerPhone: '',
+        organizationId: '',
+        administrators: []
+      });
+    } finally {
+      setLoadingOrganizations(false);
+    }
+
     setCreateOpen(true);
   }, []);
 
@@ -531,19 +593,19 @@ export const ProjectListCompact: React.FC<ProjectListCompactProps> = ({
               <FilterPill
                 active={statusFilter === 'critical'}
                 onClick={() => setStatusFilter('critical')}
-                colorClass="bg-red-500"
+                colorClass={statusColors.critical.indicator}
                 label="Critiques"
               />
               <FilterPill
                 active={statusFilter === 'problematic'}
                 onClick={() => setStatusFilter('problematic')}
-                colorClass="bg-amber-500"
+                colorClass={statusColors.problematic.indicator}
                 label="Problématiques"
               />
               <FilterPill
                 active={statusFilter === 'good'}
                 onClick={() => setStatusFilter('good')}
-                colorClass="bg-green-500"
+                colorClass={statusColors.good.indicator}
                 label="Bons"
               />
             </div>
@@ -591,9 +653,9 @@ export const ProjectListCompact: React.FC<ProjectListCompactProps> = ({
                   const { totalSites, crit, prob, bon } = aggregated;
                   const total = totalSites || 1;
                   const segments = [
-                    { key: 'crit', value: crit, className: 'bg-red-500' },
-                    { key: 'prob', value: prob, className: 'bg-amber-500' },
-                    { key: 'bon', value: bon, className: 'bg-green-500' }
+                    { key: 'crit', value: crit, className: statusColors.critical.indicator },
+                    { key: 'prob', value: prob, className: statusColors.problematic.indicator },
+                    { key: 'bon', value: bon, className: statusColors.good.indicator }
                   ].filter((s) => s.value > 0);
                   if (segments.length === 0) {
                     return (
@@ -617,15 +679,15 @@ export const ProjectListCompact: React.FC<ProjectListCompactProps> = ({
               </div>
               <div className="flex gap-5 flex-wrap text-xs text-muted-foreground">
                 <span className="flex items-center gap-1">
-                  <span className="inline-block h-2 w-2 rounded-sm bg-red-500" />
+                  <span className={`inline-block h-2 w-2 rounded-sm ${statusColors.critical.indicator}`} />
                   Critiques: {aggregated.crit}
                 </span>
                 <span className="flex items-center gap-1">
-                  <span className="inline-block h-2 w-2 rounded-sm bg-amber-500" />
+                  <span className={`inline-block h-2 w-2 rounded-sm ${statusColors.problematic.indicator}`} />
                   Problématiques: {aggregated.prob}
                 </span>
                 <span className="flex items-center gap-1">
-                  <span className="inline-block h-2 w-2 rounded-sm bg-green-500" />
+                  <span className={`inline-block h-2 w-2 rounded-sm ${statusColors.good.indicator}`} />
                   Bons: {aggregated.bon}
                 </span>
                 <span className="flex items-center gap-1">
@@ -1085,14 +1147,26 @@ export const ProjectListCompact: React.FC<ProjectListCompactProps> = ({
               Nouveau projet
             </DialogTitle>
             <DialogDescription>
-              Créer un nouveau projet de construction.
+              Créer un nouveau projet de construction. Les administrateurs peuvent être ajoutés maintenant ou plus tard.
             </DialogDescription>
           </DialogHeader>
+        
+          {createError && (
+            <div className={`p-3 mb-4 text-sm rounded-md ${statusColors.critical.bg} ${statusColors.critical.text} border ${statusColors.critical.border}`}>
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                <span>{createError}</span>
+              </div>
+            </div>
+          )}
           <form
             className="flex flex-col gap-5 mt-2"
             onSubmit={async (e) => {
               e.preventDefault();
-              if (!newProject.name.trim() || !newProject.ownerName.trim() || !newProject.ownerEmail.trim()) return;
+              if (!newProject.name.trim() || !newProject.ownerName.trim() || !newProject.ownerEmail.trim() || !newProject.organizationId) {
+                setCreateError('Veuillez remplir tous les champs obligatoires (nom du projet, maître d\'ouvrage, email et organisation)');
+                return;
+              }
 
               // Filtrer les administrateurs valides (ceux qui ont au minimum nom et email)
               const validAdmins = newProject.administrators.filter(admin => 
@@ -1100,39 +1174,63 @@ export const ProjectListCompact: React.FC<ProjectListCompactProps> = ({
               );
 
               // Validation email pour les administrateurs valides
-              const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-              const invalidEmails = validAdmins.filter(admin => 
-                !emailRegex.test(admin.email)
-              );
+              if (validAdmins.length > 0) {
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                const invalidEmails = validAdmins.filter(admin => 
+                  !emailRegex.test(admin.email)
+                );
 
-              if (invalidEmails.length > 0) {
-                alert('Veuillez saisir des adresses email valides pour les administrateurs');
-                return;
-              }
+                if (invalidEmails.length > 0) {
+                  setCreateError('Veuillez saisir des adresses email valides pour les administrateurs');
+                  return;
+                }
 
-              // Validation poste pour les administrateurs valides
-              const adminsWithoutPosition = validAdmins.filter(admin => 
-                !admin.position.trim()
-              );
+                // Validation poste pour les administrateurs valides
+                const adminsWithoutPosition = validAdmins.filter(admin => 
+                  !admin.position.trim()
+                );
 
-              if (adminsWithoutPosition.length > 0) {
-                alert('Veuillez renseigner le poste pour tous les administrateurs');
-                return;
+                if (adminsWithoutPosition.length > 0) {
+                  setCreateError('Veuillez renseigner le poste pour tous les administrateurs');
+                  return;
+                }
               }
 
               try {
                 setCreating(true);
+                setCreateError(null);
+
+                // Utiliser l'API route avec les bons champs
                 const projectData = {
                   name: newProject.name.trim(),
+                  organization_id: newProject.organizationId || organizations[0]?.id,
                   owner_name: newProject.ownerName.trim(),
                   owner_email: newProject.ownerEmail.trim(),
-                  owner_phone: newProject.ownerPhone.trim() || undefined,
-                  organization_id: '550e8400-e29b-41d4-a716-446655440000' // ATLOGX Construction
+                  owner_phone: newProject.ownerPhone.trim() || '',
+                  administrators: validAdmins.map(admin => ({
+                    name: admin.name.trim(),
+                    email: admin.email.trim(),
+                    phone: admin.phone.trim() || '',
+                    position: admin.position.trim()
+                  }))
                 };
 
-                await projectsService.create(projectData);
-                console.log('Projet créé avec succès');
-                console.log(`${validAdmins.length} administrateur(s) sur ${newProject.administrators.length} seront sauvegardés`);
+                const response = await fetch('/api/projects', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify(projectData),
+                });
+
+                if (!response.ok) {
+                  const errorData = await response.json();
+                  setCreateError(errorData.error?.message || 'Erreur lors de la création du projet');
+                  return;
+                }
+
+                const result = await response.json();
+                console.log('Projet créé avec succès:', result.data);
 
                 setCreateOpen(false);
                 setNewProject({
@@ -1140,17 +1238,20 @@ export const ProjectListCompact: React.FC<ProjectListCompactProps> = ({
                   ownerName: '',
                   ownerEmail: '',
                   ownerPhone: '',
-                  administrators: [
-                    { name: '', email: '', phone: '', position: 'Directeur de projet' },
-                    { name: '', email: '', phone: '', position: 'Chef de mission' }
-                  ]
+                  organizationId: '',
+                  administrators: []
                 });
-                // Recharger la liste des projets si la fonction est disponible
-                if (typeof window !== 'undefined') {
+                
+                // Recharger la liste des projets via callback
+                if (onProjectCreated) {
+                  onProjectCreated();
+                } else {
+                  // Fallback si pas de callback
                   window.location.reload();
                 }
               } catch (error) {
                 console.error('Erreur création projet:', error);
+                setCreateError(`Erreur lors de la création du projet : ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
               } finally {
                 setCreating(false);
               }
@@ -1171,6 +1272,32 @@ export const ProjectListCompact: React.FC<ProjectListCompactProps> = ({
                     placeholder="Nom du projet"
                     required
                   />
+                </div>
+
+                <div className="grid gap-1">
+                  <label className="text-xs font-medium">Organisation *</label>
+                  {loadingOrganizations ? (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      Chargement des organisations...
+                    </div>
+                  ) : (
+                    <select
+                      value={newProject.organizationId}
+                      onChange={(e) =>
+                        setNewProject(prev => ({ ...prev, organizationId: e.target.value }))
+                      }
+                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      required
+                    >
+                      <option value="">Sélectionner une organisation</option>
+                      {organizations.map((org) => (
+                        <option key={org.id} value={org.id}>
+                          {org.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               </div>
 
@@ -1219,9 +1346,9 @@ export const ProjectListCompact: React.FC<ProjectListCompactProps> = ({
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-sm font-medium text-foreground">Administrateurs du projet</h3>
+                  <h3 className="text-sm font-medium text-foreground">Administrateurs du projet (optionnel)</h3>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Les administrateurs sans nom et email seront ignorés lors de la sauvegarde
+                    Vous pouvez ajouter les administrateurs maintenant ou plus tard. Au moins un nom et email sont requis par administrateur.
                   </p>
                 </div>
                 <Button
@@ -1241,25 +1368,28 @@ export const ProjectListCompact: React.FC<ProjectListCompactProps> = ({
               </div>
 
               <div className="space-y-3">
+                {newProject.administrators.length === 0 && (
+                  <div className="text-center py-6 text-sm text-muted-foreground border-2 border-dashed border-muted rounded-lg">
+                    Aucun administrateur ajouté pour le moment
+                  </div>
+                )}
                 {newProject.administrators.map((admin, index) => (
                   <div key={index} className="p-3 border rounded-lg bg-muted/20">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-xs font-medium">Administrateur {index + 1}</span>
-                      {newProject.administrators.length > 1 && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setNewProject(prev => ({
-                              ...prev,
-                              administrators: prev.administrators.filter((_, i) => i !== index)
-                            }));
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setNewProject(prev => ({
+                            ...prev,
+                            administrators: prev.administrators.filter((_, i) => i !== index)
+                          }));
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -1344,15 +1474,14 @@ export const ProjectListCompact: React.FC<ProjectListCompactProps> = ({
                 size="sm"
                 onClick={() => {
                   setCreateOpen(false);
+                  setCreateError(null);
                   setNewProject({
                     name: '',
                     ownerName: '',
                     ownerEmail: '',
                     ownerPhone: '',
-                    administrators: [
-                      { name: '', email: '', phone: '', position: 'Directeur de projet' },
-                      { name: '', email: '', phone: '', position: 'Chef de mission' }
-                    ]
+                    organizationId: '',
+                    administrators: []
                   });
                 }}
                 disabled={creating}

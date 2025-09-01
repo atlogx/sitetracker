@@ -20,6 +20,10 @@ export default function ProjectClientWrapper({
   allMonthly
 }: ProjectClientWrapperProps) {
   // Handler for data changes - saves to Supabase
+  const handleUpdate = () => {
+    window.location.reload();
+  };
+
   const handleDataChange = async (siteId: string, monthData: Partial<MonthlyProgress>) => {
     try {
       console.log('Saving data for site:', siteId, monthData);
@@ -66,7 +70,7 @@ export default function ProjectClientWrapper({
       project={project}
       dashboardSiteId={dashboardSiteId}
       allMonthly={allMonthly}
-      onDataChange={handleDataChange}
+      onUpdate={handleUpdate}
     />
   );
 }
