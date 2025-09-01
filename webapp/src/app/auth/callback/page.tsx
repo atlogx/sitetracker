@@ -9,89 +9,155 @@ import { AppLayout } from "@/components/AppLayout";
 import { CheckCircle, XCircle, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
+/**
+ * Callback de confirmation email simplifié.
+ *
+ * Objectif:
+ *  - Gérer les anciens liens contenant access_token / refresh_token (query ou hash)
+ *  - Gérer les liens contenant un paramètre ?code=... (PKCE / OAuth) via exchangeCodeForSession ou getSessionFromUrl
+ *  - Fallback: si une session existe déjà (cookies), on considère la confirmation réussie
+ *  - Aucune vérification OTP directe (pas de token_hash / verifyOtp)
+ *
+ * Scénarios supportés:
+ *  1. /auth/callback?access_token=...&refresh_token=...
+ *  2. /auth/callback#access_token=...&refresh_token=...
+ *  3. /auth/callback?code=... (échange côté client)
+ *  4. Redirection sans param mais session déjà créée (getSession()) -> succès
+ */
+
+function parseFragment(fragment: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  fragment
+    .replace(/^#/, "")
+    .split("&")
+    .filter(Boolean)
+    .forEach((kv) => {
+      const [k, v] = kv.split("=");
+      if (k) out[decodeURIComponent(k)] = decodeURIComponent(v || "");
+    });
+  return out;
+}
+
+async function tryExchangeCode(code: string) {
+  // Essaye d'abord exchangeCodeForSession si présent
+  const authAny = (supabase.auth as any);
+  if (authAny?.exchangeCodeForSession) {
+    const { error } = await authAny.exchangeCodeForSession(code);
+    if (error) throw error;
+    return true;
+  }
+  // Sinon tente getSessionFromUrl (certaines versions)
+  if (authAny?.getSessionFromUrl) {
+    const { error } = await authAny.getSessionFromUrl({ storeSession: true });
+    if (error) throw error;
+    return true;
+  }
+  // Pas de méthode d'échange disponible
+  throw new Error("Impossible d'échanger le code (méthode non disponible dans cette version du client).");
+}
+
 function CallbackContent() {
   const router = useRouter();
   const params = useSearchParams();
-  
+
   const [loading, setLoading] = useState(true);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string>("");
 
   useEffect(() => {
-    const handleEmailConfirmation = async () => {
+    let cancelled = false;
+
+    const run = async () => {
       try {
-        // Vérifier les paramètres depuis l'URL et le fragment
-        let token_hash = params.get("token_hash");
-        let type = params.get("type");
+        // Récupération du param de redirection éventuel
+        const next = params.get("next");
+
+        // 1. Récupération tokens depuis query
         let access_token = params.get("access_token");
         let refresh_token = params.get("refresh_token");
+        let code = params.get("code");
 
-        // Si pas de paramètres dans l'URL, vérifier le fragment (hash)
-        if (!token_hash && !access_token && typeof window !== 'undefined') {
-          const hash = window.location.hash.substring(1);
-          const hashParams = new URLSearchParams(hash);
-          
-          token_hash = hashParams.get("token_hash");
-          type = hashParams.get("type");
-          access_token = hashParams.get("access_token");
-          refresh_token = hashParams.get("refresh_token");
+        // 2. Si pas de tokens en query, regarder le fragment (#)
+        if (typeof window !== "undefined" && (!access_token || !refresh_token)) {
+          const fragment = window.location.hash;
+            if (fragment && fragment.includes("access_token")) {
+              const fragParams = parseFragment(fragment);
+              access_token = access_token || fragParams["access_token"];
+              refresh_token = refresh_token || fragParams["refresh_token"];
+              code = code || fragParams["code"];
+            }
         }
 
-        // Si on a access_token et refresh_token (ancien format)
+        // 3. Si on a access_token + refresh_token -> setSession
         if (access_token && refresh_token) {
-          const { error } = await supabase.auth.setSession({
+          const { error: sessionErr } = await supabase.auth.setSession({
             access_token,
             refresh_token,
           });
-
-          if (error) throw error;
-          
+          if (sessionErr) {
+            throw sessionErr;
+          }
+          if (cancelled) return;
           setSuccess(true);
           toast.success("Compte confirmé !", {
-            description: "Votre email a été vérifié avec succès"
+            description: "Votre email a été vérifié avec succès",
           });
-          
           setTimeout(() => {
-            router.push("/");
-          }, 2000);
+            if (!cancelled) router.replace(next && next.startsWith("/") ? next : "/");
+          }, 1500);
           return;
         }
 
-        // Si on a token_hash et type (nouveau format)
-        if (token_hash && type) {
-          const { error: authError } = await supabase.auth.verifyOtp({
-            token_hash,
-            type: type as any
-          });
-          
-          if (authError) throw authError;
-          
-          setSuccess(true);
-          toast.success("Compte confirmé !", {
-            description: "Votre email a été vérifié avec succès"
-          });
-          
-          setTimeout(() => {
-            router.push("/");
-          }, 2000);
-          return;
+        // 4. Si on a un code -> tentative d'échange
+        if (code) {
+          await tryExchangeCode(code);
+          if (cancelled) return;
+          // Vérifier la session obtenue
+          const { data } = await supabase.auth.getSession();
+          if (data.session) {
+            setSuccess(true);
+            toast.success("Compte confirmé !", {
+              description: "Votre email a été vérifié avec succès",
+            });
+            setTimeout(() => {
+              if (!cancelled) router.replace(next && next.startsWith("/") ? next : "/");
+            }, 1500);
+            return;
+          }
+          throw new Error("Échec de l'échange du code.");
         }
 
-        // Si aucun paramètre valide
+        // 5. Fallback: peut-être que la session est déjà active
+        {
+          const { data } = await supabase.auth.getSession();
+          if (data.session) {
+            if (cancelled) return;
+            setSuccess(true);
+            toast.success("Compte confirmé !");
+            setTimeout(() => {
+              if (!cancelled) router.replace(next && next.startsWith("/") ? next : "/");
+            }, 1200);
+            return;
+          }
+        }
+
+        // 6. Aucun signe de session ou tokens
         throw new Error("Paramètres de confirmation manquants ou invalides");
-        
-      } catch (err: any) {
-        console.error("Callback error:", err);
-        setError(err.message || "Erreur lors de la confirmation");
+      } catch (e: any) {
+        if (cancelled) return;
+        setError(e?.message || "Erreur lors de la confirmation");
         toast.error("Erreur de confirmation", {
-          description: err.message || "Impossible de confirmer votre compte"
+          description: e?.message || "Impossible de confirmer votre compte",
         });
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
-    handleEmailConfirmation();
+    run();
+    return () => {
+      cancelled = true;
+    };
   }, [params, router]);
 
   const handleReturnToLogin = () => {
@@ -123,7 +189,7 @@ function CallbackContent() {
                   </div>
                 </>
               )}
-              
+
               {!loading && success && (
                 <>
                   <div className="mx-auto w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center">
@@ -147,7 +213,7 @@ function CallbackContent() {
                   </div>
                 </>
               )}
-              
+
               {!loading && !success && error && (
                 <>
                   <div className="mx-auto w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center">
@@ -167,13 +233,13 @@ function CallbackContent() {
                     </p>
                   </div>
                   <div className="space-y-2">
-                    <Button 
+                    <Button
                       onClick={handleResendEmail}
                       className="w-full"
                     >
                       Demander un nouvel email
                     </Button>
-                    <Button 
+                    <Button
                       onClick={handleReturnToLogin}
                       variant="outline"
                       className="w-full"
@@ -193,16 +259,18 @@ function CallbackContent() {
 
 export default function CallbackPage() {
   return (
-    <Suspense fallback={
-      <AppLayout>
-        <div className="min-h-[60vh] flex items-center justify-center py-10">
-          <div className="text-center">
-            <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-muted-foreground" />
-            <p className="text-muted-foreground">Chargement...</p>
+    <Suspense
+      fallback={
+        <AppLayout>
+          <div className="min-h-[60vh] flex items-center justify-center py-10">
+            <div className="text-center">
+              <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-muted-foreground" />
+              <p className="text-muted-foreground">Chargement...</p>
+            </div>
           </div>
-        </div>
-      </AppLayout>
-    }>
+        </AppLayout>
+      }
+    >
       <CallbackContent />
     </Suspense>
   );
