@@ -216,7 +216,7 @@ const ProjectAdministratorsManager: React.FC<ProjectAdministratorsManagerProps> 
         <div className="space-y-4">
           {administrators.map((admin) => (
             <Card key={admin.id} className="hover:shadow-sm transition-shadow">
-              <CardContent className="p-3">
+              <CardContent className="px-3">
                 {editingAdmin === admin.id ? (
                   <div className="space-y-3">
                     <div className="grid grid-cols-2 gap-3">
@@ -271,8 +271,8 @@ const ProjectAdministratorsManager: React.FC<ProjectAdministratorsManagerProps> 
                   </div>
                 ) : (
                   <div className="flex items-center justify-between">
-                    <div className="grid grid-cols-2 gap-6 flex-1">
-                      <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-3 flex-1 items-start">
+                      <div className="space-y-3">
                         <div className="flex items-center gap-2">
                           <Badge variant="outline" className="text-xs">
                             {admin.position || 'Administrateur'}
@@ -280,7 +280,7 @@ const ProjectAdministratorsManager: React.FC<ProjectAdministratorsManagerProps> 
                         </div>
                         <p className="font-medium">{admin.name}</p>
                       </div>
-                      <div className="space-y-2">
+                      <div className="space-y-3">
                         <p className="text-sm text-muted-foreground">{admin.email}</p>
                         {admin.phone && (
                           <p className="text-sm text-muted-foreground">{admin.phone}</p>
