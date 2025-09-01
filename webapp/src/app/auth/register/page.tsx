@@ -55,7 +55,7 @@ function RegisterContent() {
     setSubmitting(true);
     setError(null);
     setSuccessInfo(null);
-    const { user, error: signupError } = await signUp(email.trim(), password);
+    const { error: signupError } = await signUp(email.trim(), password);
     setSubmitting(false);
     if (signupError) {
       setError(signupError);

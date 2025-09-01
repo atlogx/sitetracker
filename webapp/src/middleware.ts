@@ -3,10 +3,8 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 export async function middleware(req: NextRequest) {
-  let res = NextResponse.next({
-    request: {
-      headers: req.headers,
-    },
+  const res = NextResponse.next({
+    request: { headers: req.headers },
   })
 
   const supabase = createServerClient(
@@ -14,19 +12,14 @@ export async function middleware(req: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll() {
-          return req.cookies.getAll()
+        get(name: string) {
+          return req.cookies.get(name)?.value
         },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => req.cookies.set(name, value))
-          res = NextResponse.next({
-            request: {
-              headers: req.headers,
-            },
-          })
-          cookiesToSet.forEach(({ name, value, options }) =>
-            res.cookies.set(name, value, options)
-          )
+        set(name: string, value: string, options: any) {
+          res.cookies.set(name, value, options)
+        },
+        remove(name: string, options: any) {
+          res.cookies.set(name, '', { ...options, maxAge: 0 })
         },
       },
     }
@@ -45,7 +38,8 @@ export async function middleware(req: NextRequest) {
     '/companies',
     '/administrators',
     '/monthly-progress',
-    '/settings'
+    '/settings',
+    '/site-tracker'
   ]
 
   // Pages d'authentification
