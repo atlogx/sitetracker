@@ -41,7 +41,7 @@ function CallbackContent() {
 
         // Si on a access_token et refresh_token (ancien format)
         if (access_token && refresh_token) {
-          const { error } = await supabase.auth.setSession({
+          const { data, error } = await supabase.auth.setSession({
             access_token,
             refresh_token,
           });
