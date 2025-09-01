@@ -40,7 +40,23 @@ function LoginContent() {
     setError(null);
     const { user, error: authError } = await signIn(email.trim(), password);
     setSubmitting(false);
-    if (authError || !user) {
+    if (authError) {
+      // Vérifier si c'est un problème de confirmation d'email
+      if (authError === 'EMAIL_NOT_CONFIRMED') {
+        toast.error("Email non confirmé", {
+          description: "Veuillez confirmer votre email avant de vous connecter"
+        });
+        // Rediriger vers la page de confirmation
+        router.push(`/auth/confirm-email?email=${encodeURIComponent(email.trim())}`);
+        return;
+      }
+      setError("Identifiants invalides ou échec de connexion.");
+      toast.error("Connexion refusée", {
+        description: "Vérifiez votre email et mot de passe ou utilisez la réinitialisation."
+      });
+      return;
+    }
+    if (!user) {
       setError("Identifiants invalides ou échec de connexion.");
       toast.error("Connexion refusée", {
         description: "Vérifiez votre email et mot de passe ou utilisez la réinitialisation."

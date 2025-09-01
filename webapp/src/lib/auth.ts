@@ -19,7 +19,13 @@ const resetRedirectTo = `${redirectBase}/auth/update-password`
 
 export async function signIn(email: string, password: string): Promise<AuthResult> {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-  if (error) return { user: null, error: error.message }
+  if (error) {
+    // Vérifier si c'est un problème de confirmation d'email
+    if (error.message.includes('Email not confirmed') || error.message.includes('email_not_confirmed')) {
+      return { user: null, error: 'EMAIL_NOT_CONFIRMED' }
+    }
+    return { user: null, error: error.message }
+  }
   return { user: data.user, error: null }
 }
 
@@ -27,7 +33,9 @@ export async function signUp(email: string, password: string): Promise<AuthResul
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: { emailRedirectTo: `${redirectBase}/auth/login` }
+    options: { 
+      emailRedirectTo: `${redirectBase}/auth/callback`
+    }
   })
   if (error) return { user: null, error: error.message }
   return { user: data.user, error: null }
@@ -91,6 +99,15 @@ export function getAccessTokenSync(): string | null {
   } catch {
     return null
   }
+}
+
+export async function resendConfirmationEmail(email: string): Promise<{ error: string | null }> {
+  const { error } = await supabase.auth.resend({
+    type: 'signup',
+    email: email,
+    options: { emailRedirectTo: `${redirectBase}/auth/callback` }
+  })
+  return { error: error ? error.message : null }
 }
 
 export function assertEmail(email: string): boolean {

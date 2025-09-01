@@ -7,6 +7,7 @@ import {
   AlertTriangle,
   Building2,
   ChevronRight,
+  ChevronDown,
   FolderOpen,
   LayoutDashboard,
   LogOut,
@@ -161,6 +162,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     </span>
                     <span className="truncate text-xs">Compte</span>
                   </div>
+                  <ChevronDown className="ml-auto size-4 text-sidebar-foreground/50" />
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent

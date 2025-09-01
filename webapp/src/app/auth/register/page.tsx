@@ -63,11 +63,8 @@ function RegisterContent() {
       return;
     }
     toast.success("Compte créé");
-    if (user) {
-      router.replace(next && next.startsWith("/") ? next : "/");
-      return;
-    }
-    setSuccessInfo("Inscription réussie. Vérifiez votre boîte mail pour confirmer votre adresse avant de vous connecter.");
+    // Rediriger vers la page de confirmation avec l'email
+    router.push(`/auth/confirm-email?email=${encodeURIComponent(email.trim())}`);
   }
 
   return (
