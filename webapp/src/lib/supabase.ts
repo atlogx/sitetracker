@@ -108,7 +108,7 @@ export const projectsService = {
         sites(
           *,
           monthly_progress(*),
-          site_companies(
+          company_sites(
             company:companies(*)
           )
         ),
@@ -150,7 +150,7 @@ export const projectsService = {
         sites(
           *,
           monthly_progress(*),
-          site_companies(
+          company_sites(
             company:companies(*)
           )
         ),
@@ -203,7 +203,7 @@ export const sitesService = {
       .select(`
         *,
         project:projects(*),
-        site_companies(
+        company_sites(
           company:companies(*)
         ),
         monthly_progress(*)
@@ -219,7 +219,7 @@ export const sitesService = {
       .from('sites')
       .select(`
         *,
-        site_companies(
+        company_sites(
           company:companies(*)
         ),
         monthly_progress(*)
@@ -237,7 +237,7 @@ export const sitesService = {
       .select(`
         *,
         project:projects(*),
-        site_companies(
+        company_sites(
           company:companies(*)
         ),
         monthly_progress(*)
@@ -255,7 +255,7 @@ export const sitesService = {
       .select(`
         *,
         project:projects!inner(*),
-        site_companies(
+        company_sites(
           company:companies(*)
         ),
         monthly_progress(*)

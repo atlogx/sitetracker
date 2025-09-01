@@ -125,7 +125,7 @@ export interface ProjectWithRelations extends DatabaseProject {
 export interface SiteWithRelations extends DatabaseSite {
   project?: DatabaseProject;
   monthly_progress?: DatabaseMonthlyProgress[];
-  site_companies?: {
+  company_sites?: {
     company: DatabaseCompany;
   }[];
 }
@@ -500,7 +500,7 @@ export function convertDatabaseToProject(dbProject: ProjectWithRelations): Proje
 
 export function convertDatabaseToSite(dbSite: SiteWithRelations): Site {
   const monthlyProgress = (dbSite.monthly_progress || []).map(convertDatabaseToMonthlyProgress);
-  const companies = (dbSite.site_companies || []).map(sc => convertDatabaseToCompany(sc.company));
+  const companies = (dbSite.company_sites || []).map(sc => convertDatabaseToCompany(sc.company));
   
   // Trouver la dernière progression
   const latestProgress = monthlyProgress.length > 0
