@@ -165,7 +165,7 @@ const MicroProgress: React.FC<MicroProgressProps> = ({ value }) => {
   const v = typeof value === 'number' ? Math.min(Math.max(value, 0), 100) : 0;
   return (
     <div className="flex items-center gap-2 w-40" aria-label="Progression physique cumulée">
-      <div className="relative flex-1 h-2 rounded bg-muted overflow-hidden">
+      <div className="relative flex-1 h-1.5 rounded bg-muted overflow-hidden">
         <div
           className="h-full bg-primary transition-[width] duration-500 ease-out"
           style={{ width: `${v}%` }}
@@ -305,7 +305,7 @@ const ProjectRow: React.FC<ProjectRowProps> = ({
       {/* Bande verticale statut */}
       <div
         className={[
-          'absolute left-0 top-0 h-full w-1',
+          'absolute left-0 top-0 h-full w-0.5',
           current === 'good'
             ? statusColors.good.indicator
             : current === 'problematic'
