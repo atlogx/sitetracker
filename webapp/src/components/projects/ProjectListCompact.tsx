@@ -158,25 +158,7 @@ function projectStatusBadgeVariant(projectStatus: Project['status']) {
 /*  Sous‑composants inline                                                   */
 /* -------------------------------------------------------------------------- */
 
-interface MicroProgressProps {
-  value?: number;
-}
-const MicroProgress: React.FC<MicroProgressProps> = ({ value }) => {
-  const v = typeof value === 'number' ? Math.min(Math.max(value, 0), 100) : 0;
-  return (
-    <div className="flex items-center gap-2 w-40" aria-label="Progression physique cumulée">
-      <div className="relative flex-1 h-1.5 rounded bg-muted overflow-hidden">
-        <div
-          className="h-full bg-primary transition-[width] duration-500 ease-out"
-          style={{ width: `${v}%` }}
-        />
-      </div>
-      <span className="text-xs tabular-nums w-10 text-right text-muted-foreground">
-        {typeof value === 'number' ? `${Math.round(v)}%` : '--'}
-      </span>
-    </div>
-  );
-};
+
 
 interface TrendDotsProps {
   current?: TrendStatus;
@@ -221,49 +203,7 @@ const TrendDots: React.FC<TrendDotsProps> = ({ current, minus1, minus2 }) => {
   );
 };
 
-interface InlineKPIsProps {
-  totalSites: number;
-  averageProgress?: number;
-  criticalSites: number;
-  problematicSites: number;
-  goodSites: number;
-}
-const InlineKPIs: React.FC<InlineKPIsProps> = ({
-  totalSites,
-  averageProgress,
-  criticalSites,
-  problematicSites,
-  goodSites
-}) => {
-  return (
-    <div className="flex items-center gap-4 text-[11px] text-muted-foreground">
-      <span className="flex items-center gap-1">
-        <strong className="font-medium text-foreground">{totalSites}</strong>
-        <span>site{totalSites > 1 ? 's' : ''}</span>
-      </span>
-      {typeof averageProgress === 'number' && (
-        <span className="flex items-center gap-1">
-          <strong className="font-medium text-foreground">
-            {Math.round(averageProgress)}%
-          </strong>
-          <span>moyen</span>
-        </span>
-      )}
-      <span className="flex items-center gap-1">
-        <span className={`inline-block h-2 w-2 rounded-sm ${statusColors.critical.indicator}`} />
-        {criticalSites}
-      </span>
-      <span className="flex items-center gap-1">
-        <span className={`inline-block h-2 w-2 rounded-sm ${statusColors.problematic.indicator}`} />
-        {problematicSites}
-      </span>
-      <span className="flex items-center gap-1">
-        <span className={`inline-block h-2 w-2 rounded-sm ${statusColors.good.indicator}`} />
-        {goodSites}
-      </span>
-    </div>
-  );
-};
+
 
 /* -------------------------------------------------------------------------- */
 
@@ -296,22 +236,23 @@ const ProjectRow: React.FC<ProjectRowProps> = ({
         if (e.key === 'o' && onOpen) onOpen(project);
       }}
       className={[
-        'relative flex items-center gap-4 px-4 py-3 select-none outline-none',
-        'hover:bg-accent/50 transition-colors rounded-lg border border-border bg-card',
-        selected ? 'bg-accent/70' : '',
-        'focus-visible:ring-2 focus-visible:ring-ring'
+        'relative group flex items-stretch gap-5 px-5 py-4 select-none outline-none',
+        'rounded-xl border border-border/60 bg-gradient-to-br from-background to-muted/30',
+        'hover:shadow-sm hover:border-border transition-all duration-200',
+        selected ? 'ring-2 ring-primary/30 shadow-sm' : 'shadow-[0_1px_0_0_rgba(255,255,255,0.03)]',
+        'focus-visible:ring-2 focus-visible:ring-primary/50'
       ].join(' ')}
     >
       {/* Bande verticale statut */}
       <div
         className={[
-          'absolute left-0 top-0 h-full w-0.5',
+          'absolute left-0 top-0 h-full w-1 rounded-l-xl',
           current === 'good'
-            ? statusColors.good.indicator
+            ? 'bg-gradient-to-b from-emerald-400 to-green-500'
             : current === 'problematic'
-            ? statusColors.problematic.indicator
+            ? 'bg-gradient-to-b from-amber-400 to-orange-500'
             : current === 'critical'
-            ? statusColors.critical.indicator
+            ? 'bg-gradient-to-b from-rose-500 to-red-600'
             : 'bg-muted'
         ].join(' ')}
         aria-hidden="true"
@@ -323,36 +264,77 @@ const ProjectRow: React.FC<ProjectRowProps> = ({
         role="button"
         aria-label={`Ouvrir le résumé du projet ${project.name}`}
       >
-        <div className="flex items-center gap-2 min-w-0">
-            <span className="truncate font-medium text-sm text-foreground">
-              {project.name}
-            </span>
-            <Badge
-              variant={projectStatusBadgeVariant(project.status)}
-              className="text-[10px] font-normal px-1.5 py-0.5"
-            >
-              {project.status === 'active'
-                ? 'Actif'
-                : project.status === 'demobilized'
-                ? 'Démobilisé'
-                : 'Remobilisé'}
-            </Badge>
-            {!project.isActive && project.status === 'demobilized' && (
-              <span className="text-[10px] uppercase tracking-wide bg-muted px-1.5 py-0.5 rounded text-muted-foreground border border-border">
-                Inactif
+        <div className="flex items-start justify-between gap-4 min-w-0">
+          <div className="flex flex-col min-w-0">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="truncate font-semibold text-sm tracking-tight text-foreground">
+                {project.name}
               </span>
-            )}
-        </div>
-        <div className="flex items-center gap-5 mt-1 flex-wrap">
-          <MicroProgress value={project.averageProgress} />
-          <TrendDots current={current} minus1={minus1} minus2={minus2} />
-          <InlineKPIs
-            totalSites={project.totalSites}
-            averageProgress={project.averageProgress ?? 0}
-            criticalSites={project.criticalSites ?? 0}
-            problematicSites={project.problematicSites ?? 0}
-            goodSites={project.goodSites ?? 0}
-          />
+              <Badge
+                variant={projectStatusBadgeVariant(project.status)}
+                className="text-[10px] font-medium px-2 py-0.5 rounded-md"
+              >
+                {project.status === 'active'
+                  ? 'Actif'
+                  : project.status === 'demobilized'
+                  ? 'Démobilisé'
+                  : 'Remobilisé'}
+              </Badge>
+              {!project.isActive && project.status === 'demobilized' && (
+                <span className="text-[9px] uppercase tracking-wide bg-muted/70 px-2 py-0.5 rounded-md text-muted-foreground border border-border/40">
+                  Inactif
+                </span>
+              )}
+            </div>
+
+            <div className="mt-2 flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-2 w-44">
+                <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                  <div
+                    className={[
+                      'h-full rounded-full transition-all duration-500',
+                      (project.averageProgress ?? 0) >= 70
+                        ? 'bg-gradient-to-r from-green-400 to-emerald-500'
+                        : (project.averageProgress ?? 0) >= 40
+                        ? 'bg-gradient-to-r from-amber-400 to-orange-500'
+                        : 'bg-gradient-to-r from-rose-500 to-red-600'
+                    ].join(' ')}
+                    style={{ width: `${project.averageProgress ?? 0}%` }}
+                  />
+                </div>
+                <span className="text-[11px] tabular-nums text-muted-foreground w-10 text-right">
+                  {typeof project.averageProgress === 'number'
+                    ? `${Math.round(project.averageProgress)}%`
+                    : '--'}
+                </span>
+              </div>
+
+              <TrendDots current={current} minus1={minus1} minus2={minus2} />
+
+              <div className="flex items-center gap-3 text-[10px] font-medium text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  <span className="inline-block h-2 w-2 rounded-full bg-red-500/80" />
+                  {project.criticalSites ?? 0}
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="inline-block h-2 w-2 rounded-full bg-orange-400/80" />
+                  {project.problematicSites ?? 0}
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="inline-block h-2 w-2 rounded-full bg-green-500/80" />
+                  {project.goodSites ?? 0}
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="inline-block h-2 w-2 rounded-sm bg-primary/70" />
+                  {project.totalSites} site{project.totalSites > 1 ? 's' : ''}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="hidden sm:flex items-center">
+            <TrendDots current={current} minus1={minus1} minus2={minus2} />
+          </div>
         </div>
       </div>
 
