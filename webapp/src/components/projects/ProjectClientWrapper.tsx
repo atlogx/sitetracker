@@ -45,9 +45,11 @@ export default function ProjectClientWrapper({
         site_id: siteId,
         month: monthData.month!,
         total_progress: monthData.totalProgress,
+        // monthly_progress is now derived on the backend from total_progress difference
         target_rate: monthData.targetRate,
         normal_rate: monthData.normalRate,
         delay_rate: monthData.delayRate,
+        status: calculatedStatus as 'good' | 'problematic' | 'critical',
         observations: monthData.observations
       };
 
