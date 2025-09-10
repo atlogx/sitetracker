@@ -10,6 +10,8 @@ import { Progress } from "@/components/ui/progress";
 import { Alert as AlertCard, AlertDescription } from "@/components/ui/alert";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from "@/components/ui/chart";
 import { Skeleton } from "@/components/ui/skeleton";
+
+import ProjectListCompact from "@/components/projects/ProjectListCompact";
 import {
   statisticsService,
   projectsService,
@@ -73,6 +75,7 @@ export default function DashboardPage() {
   const [recentAlerts, setRecentAlerts] = useState<AlertType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showCreateProject, setShowCreateProject] = useState(false);
   useEffect(() => {
     loadData();
   }, []);
@@ -208,7 +211,7 @@ export default function DashboardPage() {
                   Projets
                 </Button>
               </Link>
-              <Button className="flex gap-2">
+              <Button className="flex gap-2" onClick={() => setShowCreateProject(true)}>
                 <Plus className="h-4 w-4" />
                 Nouveau Projet
               </Button>
@@ -405,7 +408,7 @@ export default function DashboardPage() {
                   </div>
                   <p className="font-medium">Aucun projet</p>
                   <p className="text-xs text-muted-foreground mt-1">Créez votre premier projet</p>
-                  <Button size="sm" className="mt-4">
+                  <Button size="sm" className="mt-4" onClick={() => setShowCreateProject(true)}>
                     <Plus className="h-4 w-4 mr-2" />
                     Nouveau Projet
                   </Button>
@@ -453,6 +456,19 @@ export default function DashboardPage() {
               ))}
             </CardContent>
           </Card>
+        </div>
+
+        {/* Composant pour la création de projet */}
+        <div style={{ display: 'none' }}>
+          <ProjectListCompact
+            projects={[]}
+            loading={false}
+            autoOpenCreate={showCreateProject}
+            onProjectCreated={() => {
+              setShowCreateProject(false);
+              window.location.href = '/site-tracker/projects';
+            }}
+          />
         </div>
       </div>
   );

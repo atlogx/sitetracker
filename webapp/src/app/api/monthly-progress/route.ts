@@ -31,24 +31,24 @@ import {
  *      {
  *        site_id: string,
  *        month: 'YYYY-MM',            (required)
- *        monthly_progress: number,
+ *        total_progress: number,      // avancement physique (saisi)
  *        target_rate: number,
  *        normal_rate?: number,
  *        delay_rate?: number,
  *        observations?: string
  *      }
  *    Behavior:
- *      - Computes cumulative total_progress
- *      - Derives status from monthly_progress
+ *      - Calcule monthly_progress = total_progress - total_progress(précédent)
+ *      - Déduit status à partir de monthly_progress
  *      - Rejects duplicate (site_id + month)
  *
  *  PUT
  *    Body JSON: { id: string, ...mutableFields }
- *      Mutable: monthly_progress, target_rate, normal_rate,
+ *      Mutable: total_progress, target_rate, normal_rate,
  *               delay_rate, observations
  *    Behavior:
- *      - Recomputes status if monthly_progress changed
- *      - Recalculates cumulative totals for this row and all subsequent rows
+ *      - Recalcule monthly_progress (diff) et statut si total_progress changé
+ *      - Recalcule monthly_progress des lignes suivantes
  *
  *  DELETE
  *    /api/monthly-progress?id=UUID
@@ -167,7 +167,7 @@ export async function POST(req: NextRequest) {
     const {
       site_id,
       month,
-      monthly_progress,
+      total_progress,
       target_rate,
       normal_rate,
       delay_rate,
@@ -189,8 +189,8 @@ export async function POST(req: NextRequest) {
       return jsonError("Format month invalide (YYYY-MM)", 400)
     }
 
-    if (typeof monthly_progress !== 'number' || monthly_progress < 0) {
-      return jsonError("'monthly_progress' requis (number >= 0)", 400)
+    if (typeof total_progress !== 'number' || total_progress < 0) {
+      return jsonError("'total_progress' requis (number >= 0)", 400)
     }
     if (typeof target_rate !== 'number' || target_rate < 0) {
       return jsonError("'target_rate' requis (number >= 0)", 400)
@@ -224,7 +224,7 @@ export async function POST(req: NextRequest) {
     if (lastErr) return jsonError(lastErr.message, 400)
 
     const previousTotal = lastRow?.[0]?.total_progress ?? 0
-    const total_progress = previousTotal + (monthly_progress as number)
+    const monthly_progress = (total_progress as number) - previousTotal
 
     const domainStatus = evaluateDomainStatus(monthly_progress as number)
     const dbStatus = domainStatusToDb(domainStatus)
@@ -265,7 +265,7 @@ export async function PUT(req: NextRequest) {
     }
     const {
       id,
-      monthly_progress,
+      total_progress,
       target_rate,
       normal_rate,
       delay_rate,
@@ -281,7 +281,7 @@ export async function PUT(req: NextRequest) {
     // Load full sequence for the site so we can rebuild cumulative totals
     const { data: row, error: rowErr } = await supabase
       .from('monthly_progress')
-      .select('id, site_id, month, monthly_progress')
+      .select('id, site_id, month, total_progress')
       .eq('id', id)
       .single()
 
@@ -294,36 +294,33 @@ export async function PUT(req: NextRequest) {
 
     const { data: allRows, error: allErr } = await supabase
       .from('monthly_progress')
-      .select('id, month, monthly_progress')
+      .select('id, month, total_progress')
       .eq('site_id', siteId)
       .order('month', { ascending: true })
 
     if (allErr) return jsonError(allErr.message, 400)
 
-    // Update in-memory the target row's monthly_progress if provided
-    const updatedMonthly = typeof monthly_progress === 'number' && monthly_progress >= 0
-      ? monthly_progress
-      : row.monthly_progress
+    // Mise à jour en mémoire du total_progress de la ligne cible si fourni
+    const updatedTotal = (typeof total_progress === 'number' && total_progress >= 0)
+      ? total_progress
+      : row.total_progress
 
-    // Rebuild chain
-    let cumulative = 0
-    const patches: Array<{ id: string; total_progress: number; status?: string }> = []
+    // Recalcul des monthly_progress (différences) et statuts
+    let previous = 0
+    const patches: Array<{ id: string; monthly_progress: number | null; status?: string }> = []
     for (const r of allRows!) {
-      let mp = r.monthly_progress ?? 0
+      let tp = r.total_progress ?? 0
       if (r.id === id) {
-        mp = updatedMonthly as number
+        tp = updatedTotal as number
       }
-      cumulative += mp
-      const isTarget = r.id === id
-      let status: string | undefined
-      if (isTarget && (typeof monthly_progress === 'number')) {
-        const st = domainStatusToDb(evaluateDomainStatus(mp))
-        status = st
-      }
+      const mp = (patches.length === 0) ? null : (tp - previous)
+      previous = tp
+      const mpValue = mp === null ? 0 : mp
+      const st = domainStatusToDb(evaluateDomainStatus(mpValue))
       patches.push({
         id: r.id,
-        total_progress: cumulative,
-        ...(status ? { status } : {})
+        monthly_progress: mp,
+        status: st
       })
     }
 
@@ -331,21 +328,16 @@ export async function PUT(req: NextRequest) {
     for (const patch of patches) {
       const extraTargetFields: Record<string, unknown> = {}
       if (patch.id === id) {
-        if (typeof target_rate === 'number')
-          extraTargetFields.target_rate = target_rate
-        if (typeof normal_rate === 'number')
-          extraTargetFields.normal_rate = normal_rate
-        if (typeof delay_rate === 'number')
-          extraTargetFields.delay_rate = delay_rate
-        if (observations !== undefined)
-          extraTargetFields.observations = observations ? String(observations) : null
-        if (typeof monthly_progress === 'number')
-          extraTargetFields.monthly_progress = monthly_progress
+        if (typeof target_rate === 'number') extraTargetFields.target_rate = target_rate
+        if (typeof normal_rate === 'number') extraTargetFields.normal_rate = normal_rate
+        if (typeof delay_rate === 'number') extraTargetFields.delay_rate = delay_rate
+        if (observations !== undefined) extraTargetFields.observations = observations ? String(observations) : null
+        if (typeof total_progress === 'number') extraTargetFields.total_progress = total_progress
       }
       const { error: updErr } = await supabase
         .from('monthly_progress')
         .update({
-          total_progress: patch.total_progress,
+          monthly_progress: patch.monthly_progress,
           ...(patch.status ? { status: patch.status as any } : {}),
           ...extraTargetFields
         } as any)

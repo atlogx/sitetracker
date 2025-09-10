@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 import { Loader2, AlertTriangle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -35,6 +36,8 @@ export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const shouldOpenCreate = searchParams.get('create') === 'true';
 
   // Charger les projets à l'initialisation
   useEffect(() => {
@@ -118,7 +121,11 @@ export default function ProjectsPage() {
           }}
           onProjectCreated={() => {
             loadProjects();
+            // Supprimer le paramètre create de l'URL après création
+            window.history.replaceState({}, '', '/site-tracker/projects');
           }}
+          autoOpenCreate={shouldOpenCreate}
+          key={shouldOpenCreate ? 'create-mode' : 'normal-mode'}
         />
       </React.Suspense>
   );

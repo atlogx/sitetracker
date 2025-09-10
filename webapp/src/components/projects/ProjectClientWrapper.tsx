@@ -45,11 +45,9 @@ export default function ProjectClientWrapper({
         site_id: siteId,
         month: monthData.month!,
         total_progress: monthData.totalProgress,
-        monthly_progress: monthData.monthlyProgress,
         target_rate: monthData.targetRate,
         normal_rate: monthData.normalRate,
         delay_rate: monthData.delayRate,
-        status: calculatedStatus,
         observations: monthData.observations
       };
 

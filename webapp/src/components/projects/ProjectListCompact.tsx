@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import type { Project } from '@/types/models';
 
@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
@@ -65,6 +66,7 @@ interface ProjectListCompactProps {
   onOpenProject?: (project: Project) => void;
   onProjectCreated?: () => void;
   className?: string;
+  autoOpenCreate?: boolean;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -263,19 +265,23 @@ const InlineKPIs: React.FC<InlineKPIsProps> = ({
   );
 };
 
+/* -------------------------------------------------------------------------- */
+
 interface ProjectRowProps {
   project: Project;
   selected: boolean;
   onSelect: (p: Project) => void;
   onOpen?: (p: Project) => void;
   onEdit?: (p: Project) => void;
+  onDelete?: (p: Project) => void;
 }
 const ProjectRow: React.FC<ProjectRowProps> = ({
   project,
   selected,
   onSelect,
   onOpen,
-  onEdit
+  onEdit,
+  onDelete
 }) => {
   const current = (project.statusMonth as TrendStatus) || 'none';
   const minus1 = (project.statusMonthMinus1 as TrendStatus) || 'none';
@@ -351,8 +357,6 @@ const ProjectRow: React.FC<ProjectRowProps> = ({
       </div>
 
       <div className="flex items-center gap-1">
-        {/* Bouton d'ouverture supprimé */}
-
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -388,6 +392,16 @@ const ProjectRow: React.FC<ProjectRowProps> = ({
               Modifier
             </DropdownMenuItem>
             <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete?.(project);
+              }}
+              className="flex items-center gap-1.5 py-1 text-[13px] text-destructive focus:text-destructive"
+            >
+              <Trash2 className="h-4 w-4" />
+              Supprimer
+            </DropdownMenuItem>
             <DropdownMenuItem disabled className="flex items-center gap-1.5 py-1 text-[13px] opacity-50">
               <Activity className="h-4 w-4" />
               Alerter (bientôt)
@@ -403,13 +417,14 @@ const ProjectRow: React.FC<ProjectRowProps> = ({
 /*  Composant principal                                                       */
 /* -------------------------------------------------------------------------- */
 
-export const ProjectListCompact: React.FC<ProjectListCompactProps> = ({
+const ProjectListCompact: React.FC<ProjectListCompactProps> = ({
   projects,
   loading = false,
   onCreateProject,
   onOpenProject,
   onProjectCreated,
-  className
+  className,
+  autoOpenCreate = false
 }) => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'critical' | 'problematic' | 'good'>('all');
@@ -417,6 +432,8 @@ export const ProjectListCompact: React.FC<ProjectListCompactProps> = ({
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const [newProject, setNewProject] = useState<NewProjectFormData>({
     name: '',
     ownerName: '',
@@ -495,6 +512,23 @@ export const ProjectListCompact: React.FC<ProjectListCompactProps> = ({
     setSelectedProject(p);
   }, []);
 
+  const handleDeleteProject = useCallback(async () => {
+    if (!projectToDelete) return;
+    try {
+      setDeleting(true);
+      const res = await fetch(`/api/projects?id=${projectToDelete.id}`, { method: 'DELETE' });
+      if (res.ok) {
+        // Déclenche un rafraîchissement externe si fourni
+        onProjectCreated?.();
+        setDetailOpen(false);
+        setSelectedProject(null);
+        setProjectToDelete(null);
+      }
+    } finally {
+      setDeleting(false);
+    }
+  }, [projectToDelete, onProjectCreated]);
+
   const handleOpen = useCallback(
     (p: Project) => {
       onOpenProject?.(p);
@@ -556,6 +590,13 @@ export const ProjectListCompact: React.FC<ProjectListCompactProps> = ({
 
     setCreateOpen(true);
   }, []);
+
+  // Effet pour ouvrir automatiquement le formulaire de création
+  useEffect(() => {
+    if (autoOpenCreate) {
+      handleCreateProject();
+    }
+  }, [autoOpenCreate, handleCreateProject]);
 
   return (
     <div className={['flex flex-col gap-6 pt-2', className].join(' ')}>
@@ -775,6 +816,7 @@ export const ProjectListCompact: React.FC<ProjectListCompactProps> = ({
                   onSelect={handleSelect}
                   onOpen={handleOpen}
                   onEdit={handleEdit}
+                  onDelete={setProjectToDelete}
                 />
               ))}
             </div>
@@ -1135,9 +1177,21 @@ export const ProjectListCompact: React.FC<ProjectListCompactProps> = ({
                 >
                   Annuler
                 </Button>
-                <Button type="submit" size="sm" className="gap-1.5">
-                  Enregistrer les modifications
-                </Button>
+                <div className="flex items-center gap-3">
+                  <Button type="submit" size="sm" className="gap-1.5">
+                    Enregistrer les modifications
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="destructive"
+                    disabled={deleting}
+                    onClick={() => setProjectToDelete(selectedProject)}
+                  >
+                    {deleting ? 'Suppression...' : 'Supprimer le projet'}
+                  </Button>
+                </div>
+
               </div>
             </form>
           )}
@@ -1500,6 +1554,31 @@ export const ProjectListCompact: React.FC<ProjectListCompactProps> = ({
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* AlertDialog de confirmation de suppression */}
+      <AlertDialog open={!!projectToDelete} onOpenChange={() => setProjectToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer le projet</AlertDialogTitle>
+            <AlertDialogDescription>
+              Êtes-vous sûr de vouloir supprimer le projet "{projectToDelete?.name}" ?
+              Cette action est irréversible et supprimera également tous les sites et données associés.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>
+              Annuler
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={handleDeleteProject}
+              disabled={deleting}
+            >
+              {deleting ? 'Suppression...' : 'Supprimer définitivement'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

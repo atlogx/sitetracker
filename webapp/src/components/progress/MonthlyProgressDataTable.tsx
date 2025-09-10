@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import {
@@ -98,12 +98,17 @@ const calculateNormalRate = (projectDurationMonths?: number): string => {
   return formatPercentage(Math.round(result * 10) / 10);
 };
 
-// Helper function to calculate target rate (monthlyProgress / normalRate)
-const calculateTargetRate = (monthlyProgress: string, normalRate: string): string => {
-  const monthly = parseFloat(monthlyProgress.replace(',', '.')) || 0;
+// Helper function to calculate target rate based on monthly progress derived from total
+const calculateTargetRate = (totalProgress: string, previousTotal: number, normalRate: string): string => {
+  const current = parseFloat(totalProgress.replace(',', '.')) || 0;
+  
+  // Si l'avancement physique est 0 ou vide, le taux objectif est 0
+  if (current === 0) return '0';
+  
+  const monthlyProgress = current - previousTotal;
   const normal = parseFloat(normalRate.replace(',', '.')) || 0;
   if (normal === 0) return '0';
-  const result = (monthly / normal) * 100;
+  const result = (monthlyProgress / normal) * 100;
   return formatPercentage(Math.round(result * 10) / 10);
 };
 
@@ -130,11 +135,15 @@ const getChangesBackground = (hasChanges: boolean) => {
 const NumericCell = React.memo(({ 
   value, 
   onChange, 
-  hasChanges
+  hasChanges,
+  cellId,
+  onFocusCell
 }: { 
   value: string; 
   onChange: (value: string) => void; 
   hasChanges: boolean;
+  cellId?: string;
+  onFocusCell?: () => void;
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const cellRef = useRef<HTMLDivElement>(null);
@@ -150,23 +159,42 @@ const NumericCell = React.memo(({
     }
   }, [value]);
 
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const inputValue = e.target.value;
     const formattedValue = inputValue.replace(/[^0-9,]/g, '').replace(/,+/g, ',');
     dirtyRef.current = true;
     setLocalValue(formattedValue);
-  }, []);
+    
+    // Nettoyer le timer précédent
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    
+    // Déclencher onChange avec délai si valeur > 0
+    const numericValue = parseFloat(formattedValue.replace(',', '.')) || 0;
+    if (numericValue > 0) {
+      debounceTimerRef.current = setTimeout(() => {
+        onChange(formattedValue);
+      }, 1000); // 1000ms de délai pour laisser finir la saisie
+    }
+  }, [onChange]);
 
   const commitIfDirty = useCallback(() => {
+    // Nettoyer le timer si on commit manuellement
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
+    
     if (dirtyRef.current && localValue !== value) {
       onChange(localValue);
     }
     dirtyRef.current = false;
   }, [localValue, value, onChange]);
 
-  const handleBlur = useCallback(() => {
-    commitIfDirty();
-  }, [commitIfDirty]);
+
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
@@ -180,14 +208,12 @@ const NumericCell = React.memo(({
   }, [commitIfDirty]);
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (cellRef.current && !cellRef.current.contains(event.target as Node)) {
-        // Perte de focus uniquement si clic externe
-        inputRef.current?.blur();
+    return () => {
+      // Nettoyer le timer au démontage
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   return (
@@ -201,9 +227,12 @@ const NumericCell = React.memo(({
       <div className="flex items-center h-full">
         <Input
           ref={inputRef}
+          data-cell={cellId}
           value={localValue}
           onChange={handleChange}
-          onBlur={handleBlur}
+          onFocus={() => {
+            onFocusCell?.();
+          }}
           onKeyDown={handleKeyDown}
           className="flex-1 border-none bg-transparent text-center text-sm p-1 focus:ring-1 focus:ring-primary"
           placeholder="0,00"
@@ -321,25 +350,36 @@ export default function MonthlyProgressDataTable({
     });
 
     const dynamicMonths = buildMonths(site.startMonth, site.projectDurationMonths);
-    return dynamicMonths.map(monthInfo => {
+    return dynamicMonths.map((monthInfo, index) => {
       const originalData = dataByMonth[monthInfo.month];
-      const monthlyProgress = formatPercentage(originalData?.monthlyProgress);
+      const totalProgress = formatPercentage(originalData?.totalProgress);
+      
+      // Calculate previous total for monthly calculation
+      const previousMonthData = index > 0 ? dataByMonth[dynamicMonths[index - 1].month] : null;
+      const previousTotal = previousMonthData?.totalProgress || 0;
       
       const normalRateFromDb = originalData?.normalRate ? formatPercentage(originalData.normalRate) : '';
-      // Si pas présent en DB, on calcule à partir de la durée (ou fallback 12,5 si besoin)
       const normalRateCalculated = calculateNormalRate(site.projectDurationMonths) || '12,5';
       const normalRate = normalRateFromDb || normalRateCalculated;
       
-      const targetRate = calculateTargetRate(monthlyProgress, normalRate);
-      const monthlyProgressValue = originalData?.monthlyProgress ? parseNumber(formatPercentage(originalData.monthlyProgress)) : 0;
+      const targetRate = calculateTargetRate(totalProgress, previousTotal, normalRate);
       const totalProgressValue = originalData?.totalProgress ? parseNumber(formatPercentage(originalData.totalProgress)) : 0;
-      const hasData = monthlyProgressValue > 0 || totalProgressValue > 0;
+      const monthlyProgressValue = index === 0 ? totalProgressValue : totalProgressValue - previousTotal;
+      const hasData = totalProgressValue > 0;
+      
+      // Si l'avancement physique est 0, l'avancement du mois est aussi 0
+      let displayMonthlyProgress = '';
+      if (index === 0) {
+        displayMonthlyProgress = totalProgressValue === 0 ? '0' : '';
+      } else {
+        displayMonthlyProgress = totalProgressValue === 0 ? '0' : formatPercentage(monthlyProgressValue);
+      }
       
       return {
         month: monthInfo.month,
         label: monthInfo.label,
-        totalProgress: formatPercentage(originalData?.totalProgress),
-        monthlyProgress,
+        totalProgress,
+        monthlyProgress: displayMonthlyProgress,
         normalRate,
         targetRate,
         delayRate: calculateDelayRate(targetRate),
@@ -352,6 +392,26 @@ export default function MonthlyProgressDataTable({
   const [spreadsheetData, setSpreadsheetData] = useState<SpreadsheetData[]>(initialData);
   const [pendingChanges, setPendingChanges] = useState<PendingChange[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<{[key: string]: string}>({});
+  const [focusedMonth, setFocusedMonth] = useState<number | null>(null);
+  // Focus preservation
+  const focusedCellRef = useRef<string | null>(null);
+  const cellInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+
+  // Re-focus automatically after any re-render if a cell was focused
+  useEffect(() => {
+    if (focusedCellRef.current) {
+      const el = cellInputRefs.current[focusedCellRef.current];
+      if (el && document.activeElement !== el) {
+        el.focus();
+        // Place caret at end
+        try {
+          const len = el.value.length;
+          el.setSelectionRange(len, len);
+        } catch {}
+      }
+    }
+  });
 
   // Reset data when initial data changes
   useEffect(() => {
@@ -361,35 +421,80 @@ export default function MonthlyProgressDataTable({
 
   const hasPendingChanges = pendingChanges.length > 0;
 
-  // Vérifier s'il y a des mois partiellement renseignés (un seul champ sur deux)
-  const hasIncompleteData = pendingChanges.length > 0 && spreadsheetData.some(row => {
-    // Récupérer les valeurs actuelles ou les modifications en attente
-    const monthlyProgressChange = pendingChanges.find(c => c.month === row.month && c.field === 'monthlyProgress');
-    const totalProgressChange = pendingChanges.find(c => c.month === row.month && c.field === 'totalProgress');
-    
-    const monthlyProgressValue = monthlyProgressChange ? parseNumber(monthlyProgressChange.value as string) : parseNumber(row.monthlyProgress);
-    const totalProgressValue = totalProgressChange ? parseNumber(totalProgressChange.value as string) : parseNumber(row.totalProgress);
-    
-    // Un mois est incomplet si l'un des deux champs est renseigné mais pas l'autre
-    const hasMonthly = monthlyProgressValue > 0;
-    const hasTotal = totalProgressValue > 0;
-    
-    return (hasMonthly && !hasTotal) || (!hasMonthly && hasTotal);
+  // Re-focus after data/state updates if a month was focused
+  useEffect(() => {
+    if (focusedMonth !== null) {
+      const el = document.querySelector<HTMLInputElement>(`input[data-cell="total-${focusedMonth}"]`);
+      if (el && document.activeElement !== el) {
+        el.focus();
+        try {
+          const len = el.value.length;
+            el.setSelectionRange(len, len);
+        } catch {}
+      }
+    }
+  }, [spreadsheetData, focusedMonth]);
+
+  // Vérifier s'il y a des valeurs > 0 dans les changements
+  const hasValidChanges = pendingChanges.some(change => {
+    if (change.field === 'totalProgress') {
+      const value = parseFloat((change.value as string).replace(',', '.')) || 0;
+      return value > 0;
+    }
+    return true; // Pour les autres champs (observations), considérer comme valide
   });
+
+  // Vérifier s'il y a des erreurs de validation
+  const hasValidationErrors = Object.keys(validationErrors).length > 0;
+
+  // Vérifier s'il y a des mois partiellement renseignés (un seul champ sur deux)
+  const hasIncompleteData = false; // Plus de validation croisée nécessaire
 
   // Update cell value and track changes
   const updateCellValue = useCallback((month: number, field: string, value: string) => {
+    const errorKey = `${month}-${field}`;
+    
     setSpreadsheetData(prev => {
+      // Validation pour totalProgress : ne peut pas être inférieur au cumul précédent
+      if (field === 'totalProgress') {
+        const numericValue = parseFloat(value.replace(',', '.')) || 0;
+        const currentIndex = prev.findIndex(row => row.month === month);
+        
+        // Calculer la somme de tous les mois précédents
+        let sumPreviousMonths = 0;
+        for (let i = 0; i < currentIndex; i++) {
+          const monthValue = parseNumber(prev[i].totalProgress) || 0;
+          sumPreviousMonths += monthValue;
+        }
+        
+        if (numericValue < sumPreviousMonths) {
+          setValidationErrors(prevErrors => ({
+            ...prevErrors,
+            [errorKey]: `Ne peut pas être inférieur à la somme des mois précédents (${sumPreviousMonths}%)`
+          }));
+          // Continue avec la mise à jour pour garder la valeur saisie
+        } else {
+          // Supprimer l'erreur si elle existe
+          setValidationErrors(prevErrors => {
+            const newErrors = { ...prevErrors };
+            delete newErrors[errorKey];
+            return newErrors;
+          });
+        }
+      }
       const newData = [...prev];
       const rowIndex = newData.findIndex(row => row.month === month);
       if (rowIndex === -1) return prev;
 
       (newData[rowIndex] as any)[field] = value;
 
-      // Recalculate target rate, delay rate and status if monthly progress changed
-      if (field === 'monthlyProgress') {
+      // Recalculate target rate, delay rate and status if total progress changed
+      if (field === 'totalProgress') {
+        const currentIndex = prev.findIndex(row => row.month === month);
+        const previousTotal = currentIndex > 0 ? parseNumber(prev[currentIndex - 1].totalProgress) : 0;
         newData[rowIndex].targetRate = calculateTargetRate(
-          newData[rowIndex].monthlyProgress,
+          newData[rowIndex].totalProgress,
+          previousTotal,
           newData[rowIndex].normalRate
         );
         newData[rowIndex].delayRate = calculateDelayRate(
@@ -450,10 +555,16 @@ export default function MonthlyProgressDataTable({
         const monthString = `${currentYear}-${monthNum.toString().padStart(2, '0')}`;
 
         let status = 'good';
-        const monthlyProgressChange = changes.find(c => c.field === 'monthlyProgress');
-        const monthlyProgressValue = monthlyProgressChange ? 
-          parseNumber(monthlyProgressChange.value as string) :
-          parseNumber(spreadsheetData.find(row => row.month === parseInt(monthNum))?.monthlyProgress || '0');
+        const totalProgressChange = changes.find(c => c.field === 'totalProgress');
+        const currentRow = spreadsheetData.find(row => row.month === parseInt(monthNum));
+        const totalProgressValue = totalProgressChange ? 
+          parseNumber(totalProgressChange.value as string) :
+          parseNumber(currentRow?.totalProgress || '0');
+        
+        // Calculate monthly progress for status determination
+        const currentIndex = spreadsheetData.findIndex(row => row.month === parseInt(monthNum));
+        const previousTotal = currentIndex > 0 ? parseNumber(spreadsheetData[currentIndex - 1].totalProgress) : 0;
+        const monthlyProgressValue = totalProgressValue - previousTotal;
 
         if (monthlyProgressValue < 30) {
           status = 'critical';
@@ -524,6 +635,8 @@ export default function MonthlyProgressDataTable({
             value={value}
             onChange={(newValue) => updateCellValue(month, field, newValue)}
             hasChanges={hasChanges}
+            cellId={`total-${month}`}
+            onFocusCell={() => setFocusedMonth(month)}
           />
         );
       },
@@ -533,17 +646,17 @@ export default function MonthlyProgressDataTable({
       header: 'Avancement du mois',
       size: 140,
       cell: ({ row }: any) => {
-        const month = row.original.month;
         const value = row.original.monthlyProgress;
-        const field = 'monthlyProgress';
-        const hasChanges = isPendingChange(month, field);
-
         return (
-          <NumericCell
-            value={value}
-            onChange={(newValue) => updateCellValue(month, field, newValue)}
-            hasChanges={hasChanges}
-          />
+          <div className="flex items-center justify-center p-1">
+            {value === '' ? (
+              <span className="text-sm text-muted-foreground">-</span>
+            ) : (
+              <span className="text-sm bg-muted/30 px-1.5 py-0.5 rounded">
+                {value}%
+              </span>
+            )}
+          </div>
         );
       },
     },
@@ -556,7 +669,7 @@ export default function MonthlyProgressDataTable({
 
         return (
           <div className="flex items-center justify-center p-1">
-            <span className="text-sm text-muted-foreground bg-muted/30 px-1.5 py-0.5 rounded">
+            <span className="text-sm bg-muted/30 px-1.5 py-0.5 rounded">
               {formatPercentage(value)}%
             </span>
           </div>
@@ -609,7 +722,7 @@ export default function MonthlyProgressDataTable({
 
         return (
           <div className="flex items-center justify-center p-1">
-            <span className="text-sm text-muted-foreground bg-muted/30 px-1.5 py-0.5 rounded">
+            <span className="text-sm bg-muted/30 px-1.5 py-0.5 rounded">
               {formatPercentage(value)}%
             </span>
           </div>
@@ -690,14 +803,33 @@ export default function MonthlyProgressDataTable({
       </div>
 
       {/* Action Buttons */}
-      {hasPendingChanges && (
-        <div className="flex items-center justify-between p-3 bg-muted/50 border border-border rounded-lg shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="h-2 w-2 bg-primary rounded-full animate-pulse"></div>
+      <div className={hasPendingChanges ? 'block' : 'block'} style={{ opacity: hasPendingChanges ? 1 : 0.7 }}>
+      {(
+      <div className="flex items-center justify-between p-3 bg-muted/50 border border-border rounded-lg shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="h-2 w-2 bg-primary rounded-full animate-pulse"></div>
+          <div className="flex flex-col">
             <span className="text-sm font-semibold text-foreground">
-              {pendingChanges.length} modification{pendingChanges.length > 1 ? 's' : ''} en attente
+              {pendingChanges.length > 0 
+                ? `${pendingChanges.length} modification${pendingChanges.length > 1 ? 's' : ''} en attente`
+                : 'Aucune modification en attente'
+              }
             </span>
+            {hasValidationErrors && (
+              <div className="mt-1 text-xs text-red-600 font-medium">
+                {Object.entries(validationErrors).map(([key, error]) => {
+                  const [month] = key.split('-');
+                  const monthLabel = spreadsheetData.find(row => row.month === parseInt(month))?.label || `Mois ${month}`;
+                  return (
+                    <div key={key}>
+                      {monthLabel}: {error}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
+        </div>
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
@@ -716,8 +848,8 @@ export default function MonthlyProgressDataTable({
                     <Button
                       size="sm"
                       onClick={handleSaveAll}
-                      disabled={isSaving || hasIncompleteData}
-                      className={hasIncompleteData 
+                      disabled={isSaving || hasIncompleteData || (!hasPendingChanges || !hasValidChanges) || hasValidationErrors}
+                      className={hasIncompleteData || (!hasPendingChanges || !hasValidChanges) || hasValidationErrors
                         ? "bg-muted text-muted-foreground cursor-not-allowed" 
                         : "bg-primary hover:bg-primary/90"
                       }
@@ -727,16 +859,24 @@ export default function MonthlyProgressDataTable({
                     </Button>
                   </span>
                 </TooltipTrigger>
-                {hasIncompleteData && (
+                {(hasIncompleteData || (!hasPendingChanges || !hasValidChanges) || hasValidationErrors) && (
                   <TooltipContent>
-                    <p>Pour valider, chaque mois modifié doit avoir ses deux avancements renseignés (physique ET mensuel)</p>
+                    <p>{hasIncompleteData 
+                      ? "Pour valider, chaque mois modifié doit avoir ses deux avancements renseignés (physique ET mensuel)"
+                      : hasValidationErrors
+                        ? "Corrigez les erreurs de validation avant de sauvegarder"
+                        : !hasPendingChanges 
+                          ? "Aucune modification à valider"
+                          : "Les valeurs doivent être supérieures à 0"
+                    }</p>
                   </TooltipContent>
                 )}
               </Tooltip>
             </TooltipProvider>
           </div>
         </div>
-      )}
+        )}
+      </div>
 
       {/* Spreadsheet Table */}
       <div className={cn("rounded-lg border overflow-hidden", className)}>
