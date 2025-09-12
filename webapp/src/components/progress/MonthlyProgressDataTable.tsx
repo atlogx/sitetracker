@@ -137,13 +137,17 @@ const NumericCell = React.memo(({
   onChange, 
   hasChanges,
   cellId,
-  onFocusCell
+  onFocusCell,
+  hasError,
+  errorMessage
 }: { 
   value: string; 
   onChange: (value: string) => void; 
   hasChanges: boolean;
   cellId?: string;
   onFocusCell?: () => void;
+  hasError?: boolean;
+  errorMessage?: string;
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const cellRef = useRef<HTMLDivElement>(null);
@@ -221,8 +225,10 @@ const NumericCell = React.memo(({
       ref={cellRef}
       className={cn(
         "w-full h-full p-1 relative",
-        hasChanges && getChangesBackground(hasChanges)
+        hasChanges && getChangesBackground(hasChanges),
+        hasError && "bg-red-50 border border-red-200 rounded"
       )}
+      title={hasError ? errorMessage : undefined}
     >
       <div className="flex items-center h-full">
         <Input
@@ -233,8 +239,14 @@ const NumericCell = React.memo(({
           onFocus={() => {
             onFocusCell?.();
           }}
+          onBlur={() => {
+            commitIfDirty();
+          }}
           onKeyDown={handleKeyDown}
-          className="flex-1 border-none bg-transparent text-center text-sm p-1 focus:ring-1 focus:ring-primary"
+          className={cn(
+            "flex-1 border-none bg-transparent text-center text-sm p-1 focus:ring-1",
+            hasError ? "focus:ring-red-500 text-red-700" : "focus:ring-primary"
+          )}
           placeholder="0,00"
         />
         <span className="text-xs text-muted-foreground ml-1">%</span>
@@ -455,26 +467,31 @@ export default function MonthlyProgressDataTable({
     const errorKey = `${month}-${field}`;
     
     setSpreadsheetData(prev => {
-      // Validation pour totalProgress : ne peut pas être inférieur au cumul précédent
+      // Validation pour totalProgress : ne peut pas être inférieur au mois précédent
       if (field === 'totalProgress') {
         const numericValue = parseFloat(value.replace(',', '.')) || 0;
         const currentIndex = prev.findIndex(row => row.month === month);
         
-        // Calculer la somme de tous les mois précédents
-        let sumPreviousMonths = 0;
-        for (let i = 0; i < currentIndex; i++) {
-          const monthValue = parseNumber(prev[i].totalProgress) || 0;
-          sumPreviousMonths += monthValue;
-        }
-        
-        if (numericValue < sumPreviousMonths) {
-          setValidationErrors(prevErrors => ({
-            ...prevErrors,
-            [errorKey]: `Ne peut pas être inférieur à la somme des mois précédents (${sumPreviousMonths}%)`
-          }));
-          // Continue avec la mise à jour pour garder la valeur saisie
+        // Vérifier avec le mois précédent uniquement (pas la somme)
+        if (currentIndex > 0) {
+          const previousMonthProgress = parseNumber(prev[currentIndex - 1].totalProgress) || 0;
+          
+          if (numericValue < previousMonthProgress) {
+            setValidationErrors(prevErrors => ({
+              ...prevErrors,
+              [errorKey]: `L'avancement physique doit être au moins égal au mois précédent (${formatPercentage(previousMonthProgress)})`
+            }));
+            // Continue avec la mise à jour pour garder la valeur saisie
+          } else {
+            // Supprimer l'erreur si elle existe
+            setValidationErrors(prevErrors => {
+              const newErrors = { ...prevErrors };
+              delete newErrors[errorKey];
+              return newErrors;
+            });
+          }
         } else {
-          // Supprimer l'erreur si elle existe
+          // Premier mois : pas de validation avec un mois précédent
           setValidationErrors(prevErrors => {
             const newErrors = { ...prevErrors };
             delete newErrors[errorKey];
@@ -492,6 +509,12 @@ export default function MonthlyProgressDataTable({
       if (field === 'totalProgress') {
         const currentIndex = prev.findIndex(row => row.month === month);
         const previousTotal = currentIndex > 0 ? parseNumber(prev[currentIndex - 1].totalProgress) : 0;
+        const currentTotal = parseNumber(newData[rowIndex].totalProgress) || 0;
+        
+        // Calculer l'avancement du mois automatiquement
+        const monthlyProgress = currentIndex === 0 ? currentTotal : Math.max(0, currentTotal - previousTotal);
+        newData[rowIndex].monthlyProgress = currentTotal === 0 ? '0' : formatPercentage(monthlyProgress);
+        
         newData[rowIndex].targetRate = calculateTargetRate(
           newData[rowIndex].totalProgress,
           previousTotal,
@@ -630,6 +653,10 @@ export default function MonthlyProgressDataTable({
         const field = 'totalProgress';
         const hasChanges = isPendingChange(month, field);
 
+        const errorKey = `${month}-${field}`;
+        const hasError = !!validationErrors[errorKey];
+        const errorMessage = validationErrors[errorKey];
+
         return (
           <NumericCell
             value={value}
@@ -637,6 +664,8 @@ export default function MonthlyProgressDataTable({
             hasChanges={hasChanges}
             cellId={`total-${month}`}
             onFocusCell={() => setFocusedMonth(month)}
+            hasError={hasError}
+            errorMessage={errorMessage}
           />
         );
       },
@@ -646,15 +675,21 @@ export default function MonthlyProgressDataTable({
       header: 'Avancement du mois',
       size: 140,
       cell: ({ row }: any) => {
+        const month = row.original.month;
         const value = row.original.monthlyProgress;
+        const hasPhysicalChanges = isPendingChange(month, 'totalProgress');
+        
         return (
-          <div className="flex items-center justify-center p-1">
+          <div className="relative flex items-center justify-center p-1">
             {value === '' ? (
               <span className="text-sm text-muted-foreground">-</span>
             ) : (
               <span className="text-sm bg-muted/30 px-1.5 py-0.5 rounded">
                 {value}%
               </span>
+            )}
+            {hasPhysicalChanges && (
+              <div className="absolute top-1 right-1 h-2 w-2 bg-primary rounded-full animate-pulse"></div>
             )}
           </div>
         );
@@ -750,7 +785,7 @@ export default function MonthlyProgressDataTable({
         );
       },
     },
-  ], [updateCellValue, isPendingChange]);
+  ], [updateCellValue, isPendingChange, validationErrors]);
 
   const [showLegend, setShowLegend] = useState(false);
 
