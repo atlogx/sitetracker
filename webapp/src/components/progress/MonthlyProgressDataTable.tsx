@@ -155,11 +155,16 @@ const NumericCell = React.memo(({
   // Valeur locale pour éviter de remonter à chaque frappe (stabilise le focus)
   const [localValue, setLocalValue] = useState(value);
   const dirtyRef = useRef(false);
+  
+  // Reset local value when parent value changes (for cancel functionality)
+  const previousValue = useRef(value);
 
   // Quand la valeur extérieure change (suite à une sauvegarde ou reset) et qu'on n'est pas en édition locale
   useEffect(() => {
-    if (!dirtyRef.current) {
+    if (!dirtyRef.current || previousValue.current !== value) {
       setLocalValue(value);
+      dirtyRef.current = false;
+      previousValue.current = value;
     }
   }, [value]);
 
@@ -406,6 +411,7 @@ export default function MonthlyProgressDataTable({
   const [isSaving, setIsSaving] = useState(false);
   const [validationErrors, setValidationErrors] = useState<{[key: string]: string}>({});
   const [focusedMonth, setFocusedMonth] = useState<number | null>(null);
+  const [resetKey, setResetKey] = useState(0);
   // Focus preservation
   const focusedCellRef = useRef<string | null>(null);
   const cellInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
@@ -621,8 +627,50 @@ export default function MonthlyProgressDataTable({
   };
 
   const handleCancelAll = () => {
-    setSpreadsheetData(initialData);
+    if (pendingChanges.length === 0) return;
+    
+    const modifiedMonths = new Set(pendingChanges.map(c => c.month));
+
+    setSpreadsheetData(prev => prev.map(row => {
+      if (!modifiedMonths.has(row.month)) {
+        return row; // untouched row
+      }
+      const initialRow = initialData.find(r => r.month === row.month);
+      const hasTotalProgressChange = pendingChanges.some(c => c.month === row.month && c.field === 'totalProgress');
+      const hasObservationsChange = pendingChanges.some(c => c.month === row.month && c.field === 'observations');
+      
+      let updated = { ...row };
+      
+      if (hasTotalProgressChange) {
+        // Seule la cellule Avancement physique est vidée (valeur effacée) et les dérivés remis à 0
+        updated.totalProgress = '';
+        updated.monthlyProgress = '0';
+        updated.targetRate = '0';
+        updated.delayRate = 0;
+        updated.status = 'Non renseigné';
+      }
+      
+      if (hasObservationsChange && initialRow) {
+        // Restaure uniquement l'observation initiale
+        updated.observations = initialRow.observations;
+      }
+      
+      return updated;
+    }));
+
+    // Nettoyer les changements et erreurs associés uniquement aux cellules modifiées
     setPendingChanges([]);
+    setValidationErrors(prev => {
+      const newErrors = { ...prev };
+      pendingChanges.forEach(c => {
+        delete newErrors[`${c.month}-${c.field}`];
+        if (c.field === 'totalProgress') {
+          delete newErrors[`${c.month}-monthlyProgress`];
+        }
+      });
+      return newErrors;
+    });
+    setFocusedMonth(null);
   };
 
   const isPendingChange = useCallback((month: number, field: string) => {
@@ -659,6 +707,7 @@ export default function MonthlyProgressDataTable({
 
         return (
           <NumericCell
+            key={`total-${month}-${resetKey}`}
             value={value}
             onChange={(newValue) => updateCellValue(month, field, newValue)}
             hasChanges={hasChanges}
