@@ -76,12 +76,21 @@ interface PendingChange {
   originalValue: string | number | undefined;
 }
 
-// Helper function to format numbers with French decimal separator
+// Helper function to format numbers with French decimal separator - LIMITED TO 2 DECIMALS
 const formatPercentage = (value: number | string | undefined): string => {
   if (value === undefined || value === null || value === '') return '';
   const numValue = typeof value === 'string' ? parseFloat(value.replace(',', '.')) : value;
   if (isNaN(numValue)) return '';
-  return numValue.toString().replace('.', ',');
+  
+  // Arrondir à 2 décimales pour éviter les problèmes de précision (ex: 3.9699999999999998 -> 3.97)
+  const rounded = Math.round(numValue * 100) / 100;
+  
+  // Convertir en string avec max 2 décimales et enlever les zéros inutiles
+  // 3.97 -> "3.97", 12.50 -> "12.5", 100.00 -> "100"
+  const formatted = rounded.toFixed(2).replace(/\.?0+$/, '');
+  
+  // Remplacer le point par la virgule (format français)
+  return formatted.replace('.', ',');
 };
 
 // Helper function to calculate delay rate (100 - target rate)
